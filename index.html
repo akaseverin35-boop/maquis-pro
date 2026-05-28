@@ -763,6 +763,69 @@ td strong{color:var(--ink);font-weight:600;}
 
 <!-- ==================== LOGIN ==================== -->
 <!-- ===== FIREBASE SETUP SCREEN ===== -->
+<!-- ===== ÉCRAN LICENCE EXPIRÉE ===== -->
+<div id="licence-screen" style="display:none;position:fixed;top:0;left:0;width:100%;height:100%;z-index:9999;background:linear-gradient(145deg,#0F172A,#1E3A8A);align-items:center;justify-content:center;">
+  <div style="background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.15);border-radius:24px;padding:2.5rem 2rem;max-width:480px;width:90%;margin:auto;text-align:center;backdrop-filter:blur(20px);">
+    <!-- Icône -->
+    <div style="width:80px;height:80px;background:rgba(220,38,38,0.2);border-radius:50%;margin:0 auto 1.5rem;display:flex;align-items:center;justify-content:center;border:2px solid rgba(220,38,38,0.4);">
+      <svg viewBox="0 0 24 24" fill="none" stroke="#F87171" stroke-width="1.5" style="width:40px;height:40px"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0110 0v4"/></svg>
+    </div>
+    <!-- Titre -->
+    <div style="font-family:'Cormorant Garamond',serif;font-size:1.8rem;font-weight:700;color:#fff;margin-bottom:0.5rem">MaquisPro</div>
+    <div style="font-size:0.78rem;color:rgba(148,163,184,0.8);letter-spacing:0.12em;text-transform:uppercase;margin-bottom:1.5rem" id="licence-status-label">Licence expirée</div>
+
+    <!-- Message -->
+    <div style="background:rgba(220,38,38,0.1);border:1px solid rgba(220,38,38,0.3);border-radius:12px;padding:1rem;margin-bottom:1.5rem;">
+      <p style="color:#FCA5A5;font-size:0.88rem;line-height:1.7;margin:0" id="licence-message">
+        Votre période d'essai de <strong>7 jours</strong> est terminée.<br>
+        Pour continuer à utiliser MaquisPro, veuillez vous acquitter de la licence auprès du fournisseur.
+      </p>
+    </div>
+
+    <!-- Infos fournisseur -->
+    <div style="background:rgba(255,255,255,0.05);border-radius:12px;padding:1.25rem;margin-bottom:1.5rem;text-align:left;">
+      <div style="font-size:0.72rem;font-weight:600;color:#60A5FA;text-transform:uppercase;letter-spacing:0.1em;margin-bottom:0.75rem">📞 Contacter le fournisseur</div>
+      <div style="display:flex;flex-direction:column;gap:0.5rem;">
+        <div style="display:flex;align-items:center;gap:8px;color:#E2E8F0;font-size:0.85rem;">
+          <span>👤</span><strong>AKA SEVERIN</strong>
+        </div>
+        <div style="display:flex;align-items:center;gap:8px;font-size:0.85rem;">
+          <span>📱</span>
+          <a href="tel:0768540417" style="color:#60A5FA;text-decoration:none">0768540417</a>
+          <span style="color:#475569">/</span>
+          <a href="tel:0101546137" style="color:#60A5FA;text-decoration:none">0101546137</a>
+        </div>
+        <div style="display:flex;align-items:center;gap:8px;font-size:0.85rem;">
+          <span>📧</span>
+          <a href="mailto:akaseverin35@gmail.com" style="color:#60A5FA;text-decoration:none">akaseverin35@gmail.com</a>
+        </div>
+        <div style="display:flex;align-items:center;gap:8px;font-size:0.85rem;">
+          <span>💬</span>
+          <a href="https://wa.me/2250768540417" target="_blank" style="color:#25D366;text-decoration:none;font-weight:600">WhatsApp : 0768540417</a>
+        </div>
+      </div>
+    </div>
+
+    <!-- Activation licence -->
+    <div style="margin-bottom:1rem;">
+      <div style="font-size:0.72rem;font-weight:600;color:#60A5FA;text-transform:uppercase;letter-spacing:0.1em;margin-bottom:0.5rem;text-align:left">🔑 Activer votre licence</div>
+      <input id="licence-key-input" placeholder="Entrez votre clé de licence..." style="width:100%;padding:0.75rem 1rem;background:rgba(255,255,255,0.08);border:1px solid rgba(59,130,246,0.35);border-radius:10px;color:#fff;font-family:Inter,monospace;font-size:0.9rem;outline:none;box-sizing:border-box;margin-bottom:0.5rem;" oninput="this.style.borderColor='#3B82F6'">
+      <button onclick="activerLicence()" style="width:100%;padding:0.75rem;background:linear-gradient(135deg,#3B82F6,#1D4ED8);border:none;border-radius:10px;color:#fff;font-size:0.9rem;font-weight:600;cursor:pointer;font-family:Inter,sans-serif;transition:opacity 0.2s;" onmouseover="this.style.opacity='0.9'" onmouseout="this.style.opacity='1'">
+        ✓ Activer la licence
+      </button>
+      <div id="licence-key-error" style="color:#F87171;font-size:0.78rem;margin-top:0.4rem;min-height:1rem;"></div>
+    </div>
+
+    <!-- Badge démo restant (visible si encore en période d'essai) -->
+    <div id="demo-badge-screen" style="display:none;background:rgba(245,158,11,0.1);border:1px solid rgba(245,158,11,0.3);border-radius:8px;padding:0.6rem;font-size:0.78rem;color:#FCD34D;margin-bottom:0.75rem;">
+      ⏳ Période d'essai : <strong id="demo-jours-restants"></strong> jour(s) restant(s)
+    </div>
+    <button id="btn-fermer-licence" onclick="fermerLicenceScreen()" style="display:none;width:100%;padding:0.6rem;background:transparent;border:1px solid rgba(255,255,255,0.15);border-radius:10px;color:#94A3B8;font-size:0.82rem;cursor:pointer;font-family:Inter,sans-serif;">
+      Continuer avec la version d'essai →
+    </button>
+  </div>
+</div>
+
 <div id="firebase-setup-screen" style="
   min-height:100vh;display:flex;align-items:center;justify-content:center;
   background:linear-gradient(145deg,#0F172A 0%,#1E3A8A 100%);
@@ -895,6 +958,9 @@ td strong{color:var(--ink);font-weight:600;}
     </div>
     <div class="tb-right">
       <div class="tb-time" id="tb-time"></div>
+      <div id="demo-badge-topbar" style="display:none;background:rgba(245,158,11,0.15);border:1px solid rgba(245,158,11,0.4);border-radius:6px;padding:3px 8px;font-size:0.7rem;color:#D97706;font-weight:600;cursor:pointer;" onclick="showLicenceScreen()" title="Cliquez pour activer la licence complète">
+        ⏳ DÉMO — <span id="demo-jours-tb"></span>j restant(s)
+      </div>
       <button id="btn-font" onclick="openFontPanel()" title="Style d'écriture" style="
         display:none;background:var(--n50);border:1px solid var(--n200);border-radius:8px;
         padding:5px 10px;cursor:pointer;font-family:var(--font);font-size:0.78rem;
@@ -2057,6 +2123,9 @@ function initConnectivityIndicator(){} // désactivé
 
 // ---- Auto-load saved Firebase config + connexion automatique ----
 window.addEventListener('DOMContentLoaded', () => {
+  // Vérifier la licence au démarrage
+  if(!LICENCE.init()) return; // Bloqué — licence expirée
+
   const saved = localStorage.getItem('maquis_fb_config');
   if(saved) {
     try {
@@ -4471,6 +4540,132 @@ function forceRefresh() {
     refreshCurrentPage();
     if(btn) { btn.style.opacity='1'; btn.style.pointerEvents='auto'; }
   }
+}
+
+/* ==================== SYSTÈME DE LICENCE ==================== */
+const LICENCE = {
+  DEMO_DAYS: 7,
+  // Clés de licence valides (format: MAQUIS-XXXX-XXXX-XXXX)
+  // Tu génères ces clés et tu les envoies au client par email
+  VALID_KEYS: [
+    'MAQUIS-2024-PRO1-AKTV',
+    'MAQUIS-2024-PRO2-BKTV',
+    'MAQUIS-2024-PRO3-CKTV',
+    'MAQUIS-2025-PRO1-DKTV',
+    'MAQUIS-2025-PRO2-EKTV',
+    'MAQUIS-2025-VIP1-FKTV',
+    'MAQUIS-2025-VIP2-GKTV',
+    'MAQUIS-2026-PRO1-HKTV',
+    'MAQUIS-2026-VIP1-IKTV',
+    'MAQUIS-DEMO-TEST-0000', // clé de test
+  ],
+
+  // Vérifier le statut de la licence
+  check() {
+    // Licence activée ?
+    const key = localStorage.getItem('maquis_licence_key');
+    if(key && this.VALID_KEYS.includes(key.toUpperCase().trim())) {
+      return { valid: true, type: 'full', message: 'Licence complète activée' };
+    }
+
+    // Période d'essai
+    let startDate = localStorage.getItem('maquis_demo_start');
+    if(!startDate) {
+      startDate = new Date().toISOString();
+      localStorage.setItem('maquis_demo_start', startDate);
+    }
+
+    const start    = new Date(startDate);
+    const now      = new Date();
+    const diffMs   = now - start;
+    const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+    const remaining = this.DEMO_DAYS - diffDays;
+
+    if(remaining > 0) {
+      return { valid: true, type: 'demo', remaining, message: `Démo — ${remaining} jour(s) restant(s)` };
+    }
+
+    return { valid: false, type: 'expired', remaining: 0, message: 'Licence expirée' };
+  },
+
+  // Initialiser et afficher le bon écran
+  init() {
+    const status = this.check();
+
+    if(!status.valid) {
+      // Expiré — afficher l'écran de blocage
+      this.showExpired();
+      return false;
+    }
+
+    if(status.type === 'demo') {
+      // En démo — afficher badge
+      const badge = document.getElementById('demo-badge-topbar');
+      const jours = document.getElementById('demo-jours-tb');
+      if(badge) badge.style.display = 'block';
+      if(jours) jours.textContent = status.remaining;
+    }
+
+    return true;
+  },
+
+  showExpired() {
+    // Masquer tous les écrans
+    ['firebase-setup-screen','login-screen','app-screen'].forEach(id => {
+      const el = document.getElementById(id);
+      if(el) el.style.display = 'none';
+    });
+    // Afficher écran de blocage
+    const ls = document.getElementById('licence-screen');
+    if(ls) ls.style.display = 'flex';
+  }
+};
+
+function activerLicence() {
+  const input = document.getElementById('licence-key-input');
+  const errEl = document.getElementById('licence-key-error');
+  const key   = (input?.value||'').toUpperCase().trim();
+
+  if(!key) {
+    errEl.textContent = 'Veuillez entrer une clé de licence.';
+    return;
+  }
+
+  if(LICENCE.VALID_KEYS.includes(key)) {
+    localStorage.setItem('maquis_licence_key', key);
+    errEl.style.color = '#6EE7B7';
+    errEl.textContent = '✅ Licence activée avec succès ! Redémarrage…';
+    setTimeout(() => window.location.reload(), 1500);
+  } else {
+    errEl.style.color = '#F87171';
+    errEl.textContent = '❌ Clé invalide. Contactez AKA SEVERIN au 0768540417.';
+    input.style.borderColor = '#EF4444';
+  }
+}
+
+function showLicenceScreen() {
+  // Afficher l'écran de licence depuis la topbar
+  const ls = document.getElementById('licence-screen');
+  if(!ls) return;
+  // Afficher le badge démo restant
+  const status = LICENCE.check();
+  const badge  = document.getElementById('demo-badge-screen');
+  const jours  = document.getElementById('demo-jours-restants');
+  const label  = document.getElementById('licence-status-label');
+  const msg    = document.getElementById('licence-message');
+
+  if(status.type === 'demo' && badge) {
+    badge.style.display = 'block';
+    if(jours) jours.textContent = status.remaining;
+    if(label) label.textContent = "Version essai";
+    if(msg) msg.innerHTML = `Il vous reste <strong>${status.remaining} jour(s)</strong> d'essai gratuit.<br>Activez votre licence complète pour un accès illimité.`;
+  }
+  ls.style.display = 'flex';
+}
+
+function fermerLicenceScreen() {
+  const ls = document.getElementById('licence-screen');
+  if(ls) ls.style.display = 'none';
 }
 
 /* ==================== CLOCK ==================== */
