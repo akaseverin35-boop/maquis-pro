@@ -1796,11 +1796,20 @@ function initFirebaseSync() {
       );
 
       Promise.all(loadPromises).then(() => {
-        // Toutes les données Firebase sont dans DB — démarrer l'écoute temps réel
-        startListening();
-        // Mettre à jour la liste des caissières
+        // Toutes les données chargées — mettre à jour toute l'interface
         populateSel();
-      }).catch(() => startListening());
+        renderStockBadge();
+        renderImpBadge();
+        renderClotureBadge();
+        refreshSvLists();
+        // Rafraîchir la page active
+        refreshCurrentPage();
+        // Démarrer l'écoute temps réel
+        startListening();
+      }).catch(() => {
+        populateSel();
+        startListening();
+      });
     }
   }).catch(() => {
     // Erreur réseau — démarrer quand même l'écoute
@@ -1814,16 +1823,20 @@ function startListening() {
   collections.forEach(col => {
     FBDB.ref(col).on('value', snap => {
       const val = snap.val();
-      if(!val) return;
       if(col === 'categories') {
-        // Categories peut être un tableau ou un objet
-        const arr = Array.isArray(val) ? val : Object.values(val);
-        DB.categories = arr.filter(x => x !== null && x !== undefined);
+        if(val){
+          const arr = Array.isArray(val) ? val : Object.values(val);
+          DB.categories = arr.filter(x => x !== null && x !== undefined);
+        }
       } else {
-        // Filtrer les entrées null que Firebase peut retourner
-        DB[col] = Object.values(val).filter(x => x !== null && x !== undefined);
+        // val peut être null si la collection est vide
+        DB[col] = val ? Object.values(val).filter(x => x !== null && x !== undefined) : [];
       }
       if(col === 'caissières') populateSel();
+      // Toujours rafraîchir même si la collection est vide
+      renderStockBadge();
+      renderImpBadge();
+      renderClotureBadge();
       refreshCurrentPage();
     });
   });
@@ -1833,15 +1846,18 @@ function refreshCurrentPage() {
   const active = document.querySelector('.main.on');
   if(!active) return;
   const page = active.id.replace('page-','');
-  if(page==='vente')     { renderMenuGrid('tous'); renderMenuCats(); }
-  if(page==='historique'){ renderHist(); }
-  if(page==='impayes')   { renderImpayes(); }
-  if(page==='rapport')   { renderRapport(); }
-  if(page==='stock')     { renderStock('tous'); }
-  if(page==='serveuses') { renderSv(); }
-  if(page==='clotures')  { renderClotures(); }
-  if(page==='admin')     { renderAdmin(); }
-  renderStockBadge(); renderImpBadge(); renderClotureBadge();
+  try {
+    if(page==='vente')      { renderMenuGrid('tous'); renderMenuCats(); }
+    if(page==='historique') { renderHist(); }
+    if(page==='impayes')    { renderImpayes(); }
+    if(page==='rapport')    { renderRapport(); }
+    if(page==='stock')      { renderStockPage(); renderStock('tous'); }
+    if(page==='serveuses')  { renderSv(); }
+    if(page==='clotures')   { renderClotures(); }
+    if(page==='admin')      { renderAdmin(); }
+    if(page==='inventaire') { renderInventaire(); }
+    renderStockBadge(); renderImpBadge(); renderClotureBadge();
+  } catch(e) { /* ignorer les erreurs de rendu partiel */ }
 }
 
 // ---- Firebase write helpers ----
@@ -2253,6 +2269,18 @@ function _doLoginCheck(v){
   document.getElementById('sb-admin-item').style.display = isA ? '' : 'none';
   document.getElementById('sb-inventaire-item').style.display = isA ? '' : 'none';
   renderClotureBadge();
+  // Recharger toutes les données Firebase au login
+  if(APP_MODE==='firebase' && FBDB){
+    const cols=['ventes','historique','clotures','logs','stock','serveuses'];
+    Promise.all(cols.map(col=>
+      FBDB.ref(col).once('value').then(snap=>{
+        const val=snap.val();
+        DB[col] = val ? Object.values(val).filter(x=>x!==null&&x!==undefined) : [];
+      })
+    )).then(()=>{
+      renderStockBadge(); renderImpBadge(); renderClotureBadge();
+    }).catch(()=>{});
+  }
   goTo('vente');
   toast(`Bienvenue, ${c.nom} !`,'ok');
 }
