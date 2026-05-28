@@ -877,7 +877,7 @@ td strong{color:var(--ink);font-weight:600;}
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:14px;height:14px"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="3"/><line x1="12" y1="2" x2="12" y2="5"/><line x1="12" y1="19" x2="12" y2="22"/><line x1="2" y1="12" x2="5" y2="12"/><line x1="19" y1="12" x2="22" y2="12"/></svg>
         Design
       </button>
-      <div id="conn-indicator" style="font-size:0.72rem;padding:3px 8px;border-radius:6px;background:var(--n50);border:1px solid var(--n200);display:none"></div>
+
       <button onclick="forceRefresh()" title="Actualiser les données" style="background:var(--n50);border:1px solid var(--n200);border-radius:8px;padding:5px 10px;cursor:pointer;font-size:0.78rem;color:var(--ink3);display:flex;align-items:center;gap:4px;" id="btn-refresh">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:13px;height:13px"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>
         Actualiser
@@ -2017,32 +2017,7 @@ function fbSetArray(collection, arr) {
 }
 
 // ---- Connectivity indicator ----
-function initConnectivityIndicator() {
-  if(APP_MODE !== 'firebase' || !FBDB) return;
-  const ind = document.getElementById('conn-indicator');
-  if(!ind) return;
-  ind.style.display = 'block';
-
-  // Si on reçoit des données Firebase = on est en ligne
-  // On se base sur navigator.onLine + test fetch simple
-  const updateStatus = (online) => {
-    ind.textContent = online ? '🟢 En ligne' : '🔴 Hors ligne';
-    ind.style.color  = online ? '#6EE7B7'    : '#F87171';
-  };
-
-  // Vérification initiale — si le polling fonctionne = en ligne
-  // On marque "En ligne" par défaut et on surveille les erreurs réseau
-  updateStatus(true);
-
-  // Écouter les événements réseau du navigateur
-  window.addEventListener('online',  () => updateStatus(true));
-  window.addEventListener('offline', () => updateStatus(false));
-
-  // Vérification périodique légère
-  setInterval(() => {
-    updateStatus(navigator.onLine !== false);
-  }, 5000);
-}
+function initConnectivityIndicator(){} // désactivé
 
 // ---- Auto-load saved Firebase config + connexion automatique ----
 window.addEventListener('DOMContentLoaded', () => {
@@ -2403,7 +2378,7 @@ function _doLoginCheck(v){
   const modeBadge=document.getElementById('tb-mode-badge');
   if(modeBadge){
     modeBadge.style.display='block';
-    modeBadge.textContent=APP_MODE==='firebase'?'🔥 Temps réel':'📴 Local';
+    modeBadge.textContent=APP_MODE==='firebase'?'🔥 Firebase':'📴 Local';
   }
   // Bouton Design — Patron uniquement
   const btnTheme=document.getElementById('btn-theme');
