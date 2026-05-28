@@ -877,7 +877,7 @@ td strong{color:var(--ink);font-weight:600;}
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:14px;height:14px"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="3"/><line x1="12" y1="2" x2="12" y2="5"/><line x1="12" y1="19" x2="12" y2="22"/><line x1="2" y1="12" x2="5" y2="12"/><line x1="19" y1="12" x2="22" y2="12"/></svg>
         Design
       </button>
-      <div id="conn-indicator" style="font-size:0.72rem;padding:3px 8px;border-radius:6px;background:var(--n50);border:1px solid var(--n200);display:none"></div>
+
       <button onclick="forceRefresh()" title="Actualiser les données" style="background:var(--n50);border:1px solid var(--n200);border-radius:8px;padding:5px 10px;cursor:pointer;font-size:0.78rem;color:var(--ink3);display:flex;align-items:center;gap:4px;" id="btn-refresh">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:13px;height:13px"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>
         Actualiser
@@ -2017,32 +2017,7 @@ function fbSetArray(collection, arr) {
 }
 
 // ---- Connectivity indicator ----
-function initConnectivityIndicator() {
-  if(APP_MODE !== 'firebase' || !FBDB) return;
-  const ind = document.getElementById('conn-indicator');
-  if(!ind) return;
-  ind.style.display = 'block';
-
-  // Si on reçoit des données Firebase = on est en ligne
-  // On se base sur navigator.onLine + test fetch simple
-  const updateStatus = (online) => {
-    ind.textContent = online ? '🟢 En ligne' : '🔴 Hors ligne';
-    ind.style.color  = online ? '#6EE7B7'    : '#F87171';
-  };
-
-  // Vérification initiale — si le polling fonctionne = en ligne
-  // On marque "En ligne" par défaut et on surveille les erreurs réseau
-  updateStatus(true);
-
-  // Écouter les événements réseau du navigateur
-  window.addEventListener('online',  () => updateStatus(true));
-  window.addEventListener('offline', () => updateStatus(false));
-
-  // Vérification périodique légère
-  setInterval(() => {
-    updateStatus(navigator.onLine !== false);
-  }, 5000);
-}
+function initConnectivityIndicator(){} // désactivé
 
 // ---- Auto-load saved Firebase config + connexion automatique ----
 window.addEventListener('DOMContentLoaded', () => {
@@ -2258,59 +2233,79 @@ function calcSoldeMonnaie(){
 
 function confirmerSolde(){
   if(!soldeCurrent) return;
-  const mode = document.getElementById('solde-mode').value;
-  const ventId = soldeCurrent.id;
-  const btn = document.getElementById('btn-solder');
+  const mode    = document.getElementById('solde-mode').value;
+  const ventId  = soldeCurrent.id;
+  const btn     = document.getElementById('btn-solder');
   if(btn){ btn.disabled=true; btn.textContent='⏳ En cours…'; }
 
-  // Mettre à jour l'objet localement
-  soldeCurrent.statut    = 'Payé';
-  soldeCurrent.modeSolde = mode;
-  soldeCurrent.heureSolde= tNow();
-  soldeCurrent.soldePar  = DB.user?.nom||'';
+  // Mettre à jour l'objet
+  soldeCurrent.statut     = 'Payé';
+  soldeCurrent.modeSolde  = mode;
+  soldeCurrent.heureSolde = tNow();
+  soldeCurrent.soldePar   = DB.user?.nom||'';
+  const recuData = {...soldeCurrent};
 
-  // Mettre à jour dans les tableaux locaux
+  // Mettre à jour localement
   const vIdx = DB.ventes.findIndex(x=>x.id===ventId);
   if(vIdx>=0) DB.ventes[vIdx] = {...soldeCurrent};
-  else DB.ventes.push({...soldeCurrent});
-
   const hiIdx = DB.historique.findIndex(x=>x.id===ventId);
   if(hiIdx>=0) DB.historique[hiIdx] = {...soldeCurrent};
-  else DB.historique.push({...soldeCurrent});
-
-  const recuData = {...soldeCurrent};
   soldeCurrent = null;
 
-  if(APP_MODE==='firebase' && FBDB){
-    // Utiliser le vrai SDK pour chercher et mettre à jour par l'ID de vente
-    const updateCol = (col) => {
-      return FBDB.ref(col).orderByChild('id').equalTo(ventId).once('value')
-        .then(snap => {
-          const val = snap.val();
-          if(val){
-            const updates = {};
-            Object.keys(val).forEach(k=>{
-              updates[col+'/'+k+'/statut']     = 'Payé';
-              updates[col+'/'+k+'/modeSolde']  = mode;
-              updates[col+'/'+k+'/heureSolde'] = recuData.heureSolde;
-              updates[col+'/'+k+'/soldePar']   = recuData.soldePar;
-            });
-            return FBDB.ref('/').update(updates);
-          }
-        });
-    };
-    Promise.all([updateCol('ventes'), updateCol('historique')])
-      .then(()=>{ if(btn){btn.disabled=false;btn.textContent='Solder ✓';} })
-      .catch(err=>{ if(btn){btn.disabled=false;btn.textContent='Solder ✓';}
-        toast('Erreur sync: '+err.message,'err'); });
-  } else {
-    toast(`Facture ${ventId} soldée ✓`, 'ok');
-    if(btn){btn.disabled=false;btn.textContent='Solder ✓';}
-  }
-
+  // Afficher le reçu immédiatement
   showRecu(recuData);
   closeModal('modal-solde');
   renderImpayes(); renderHist(); renderRapport(); renderImpBadge();
+  toast('Facture '+ventId+' soldée ✓', 'ok');
+  if(btn){btn.disabled=false;btn.textContent='Solder ✓';}
+
+  if(APP_MODE==='firebase' && FBDB){
+    const cfg = firebase._cfg;
+    const base = cfg.databaseURL.replace(/\/+$/,'');
+    const auth = cfg.apiKey;
+
+    // Stopper tous les listeners pour éviter écrasement
+    Object.values(FBDB._listeners||{}).forEach(l=>clearInterval(l.timer));
+    FBDB._listeners = {};
+
+    // Lire, modifier et réécrire chaque collection
+    const updateCollection = (col) => {
+      return fetch(base+'/'+col+'.json?auth='+auth)
+        .then(r => r.json())
+        .then(data => {
+          if(!data) return;
+          // Trouver et modifier la vente par son ID
+          let modified = false;
+          Object.keys(data).forEach(k => {
+            if(data[k] && data[k].id === ventId) {
+              data[k].statut     = 'Payé';
+              data[k].modeSolde  = mode;
+              data[k].heureSolde = recuData.heureSolde;
+              data[k].soldePar   = recuData.soldePar;
+              modified = true;
+            }
+          });
+          if(!modified) return;
+          // Réécrire toute la collection avec la modification
+          return fetch(base+'/'+col+'.json?auth='+auth, {
+            method: 'PUT',
+            headers: {'Content-Type':'application/json'},
+            body: JSON.stringify(data)
+          });
+        });
+    };
+
+    Promise.all([
+      updateCollection('ventes'),
+      updateCollection('historique')
+    ]).then(() => {
+      // Redémarrer le polling après 1.5s
+      setTimeout(() => startListening(), 1500);
+    }).catch(err => {
+      console.error('Solde sync err:', err);
+      setTimeout(() => startListening(), 1500);
+    });
+  }
 }
 
 function imprimerFacture(id){
@@ -2403,7 +2398,7 @@ function _doLoginCheck(v){
   const modeBadge=document.getElementById('tb-mode-badge');
   if(modeBadge){
     modeBadge.style.display='block';
-    modeBadge.textContent=APP_MODE==='firebase'?'🔥 Temps réel':'📴 Local';
+    modeBadge.textContent=APP_MODE==='firebase'?'🔥 Firebase':'📴 Local';
   }
   // Bouton Design — Patron uniquement
   const btnTheme=document.getElementById('btn-theme');
@@ -2653,19 +2648,29 @@ function confirmVente(){
   newVente.cloture = null; // sera rempli à la clôture
   DB.ventes.push(newVente);
   DB.historique.push(newVente);
-  // Sync Firebase — écriture directe via fetch
+  // Sync Firebase — stopper polling, écrire, redémarrer
   if(APP_MODE==='firebase' && FBDB){
-    if(FBDB._polls){
-      Object.values(FBDB._polls).forEach(id=>clearInterval(id));
-      FBDB._polls={};
-    }
-    const ventesObj={}, histObj={};
-    DB.ventes.forEach((v,i)=>{ventesObj['v'+i]=v;});
-    DB.historique.forEach((v,i)=>{histObj['h'+i]=v;});
+    const cfg = firebase._cfg;
+    const base = cfg.databaseURL.replace(/\/+$/,'');
+    const auth = cfg.apiKey;
+    const fbKey = 'v' + Date.now();
+
+    // Stopper le polling
+    Object.values(FBDB._listeners||{}).forEach(l=>clearInterval(l.timer));
+    FBDB._listeners = {};
+
+    // Écrire la nouvelle vente dans les deux collections
     Promise.all([
-      fetch(`${FBDB.base}/ventes.json`,{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify(ventesObj)}),
-      fetch(`${FBDB.base}/historique.json`,{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify(histObj)})
-    ]).then(()=>setTimeout(()=>startListening(),2000)).catch(()=>setTimeout(()=>startListening(),2000));
+      fetch(base+'/ventes/'+fbKey+'.json?auth='+auth, {
+        method:'PUT', headers:{'Content-Type':'application/json'},
+        body: JSON.stringify(newVente)
+      }),
+      fetch(base+'/historique/'+fbKey+'.json?auth='+auth, {
+        method:'PUT', headers:{'Content-Type':'application/json'},
+        body: JSON.stringify(newVente)
+      })
+    ]).then(()=> setTimeout(()=>startListening(), 1000))
+      .catch(()=> setTimeout(()=>startListening(), 1000));
   }
   // Décrémenter stock dans tous les cas
   items.forEach(i=>{const s=DB.stock.find(x=>x.id===i.id);if(s){s.qty=Math.max(0,s.qty-i.qty);fbSet('stock',s.id,s);}});
