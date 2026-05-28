@@ -1,0 +1,3657 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MaquisPro — Gestion Bar & Maquis</title>
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="MaquisPro">
+  <meta name="theme-color" content="#1E2F6B">
+  <meta name="description" content="Logiciel de gestion de bar et maquis — temps réel">
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@500;600;700&family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+/* ===================== VARIABLES ===================== */
+:root {
+  /* Blue palette */
+  --b50:#EFF6FF; --b100:#DBEAFE; --b200:#BFDBFE; --b300:#93C5FD;
+  --b400:#3B82F6; --b500:#2563EB; --b600:#1D4ED8; --b700:#1E40AF; --b800:#1E3A8A; --b900:#1E2F6B;
+  /* Neutrals */
+  --n0:#FFFFFF; --n50:#F8FAFC; --n100:#F1F5F9; --n200:#E2E8F0; --n300:#CBD5E1;
+  --n400:#94A3B8; --n600:#475569; --n700:#334155; --n800:#1E293B; --n900:#0F172A;
+  /* Semantic */
+  --emerald:#059669; --emerald-l:#D1FAE5;
+  --ruby:#DC2626; --ruby-l:#FEE2E2;
+  --sapphire:#2563EB; --sapphire-l:#DBEAFE;
+  --amber:#D97706; --amber-l:#FEF3C7;
+  /* Text */
+  --ink:#0F172A; --ink2:#1E293B; --ink3:#64748B;
+  /* Backgrounds */
+  --paper:#F8FAFC; --paper2:#F1F5F9;
+  /* Borders */
+  --border:rgba(30,58,138,0.10); --border2:rgba(30,58,138,0.20);
+  /* Accent (keep gold for receipts/print only) */
+  --g50:#FBF6EC; --g100:#F3E8CC; --g400:#C9922A; --g600:#9B6E18;
+  --gold-grad:linear-gradient(135deg,#2563EB 0%,#3B82F6 50%,#1D4ED8 100%);
+  /* Shadows */
+  --sh-sm:0 1px 4px rgba(15,23,42,0.06),0 1px 2px rgba(15,23,42,0.04);
+  --sh:0 4px 16px rgba(15,23,42,0.08),0 2px 6px rgba(15,23,42,0.05);
+  --sh-lg:0 12px 40px rgba(15,23,42,0.12),0 4px 12px rgba(15,23,42,0.07);
+  --r:10px; --rl:16px; --rxl:22px;
+  --font:'Inter',sans-serif;
+  --font-serif:'Cormorant Garamond',serif;
+}
+*{margin:0;padding:0;box-sizing:border-box;}
+html{scroll-behavior:smooth;}
+body{font-family:var(--font);background:var(--n50);color:var(--ink);min-height:100vh;font-size:14px;line-height:1.5;}
+
+/* ===================== PRINT ===================== */
+@media print {
+  #login-screen,#app-screen .topbar,.sidebar,.no-print,
+  .overlay,.toasts{display:none!important;}
+  #app-screen{display:block!important;}
+  .main{display:none!important;}
+  .main.print-target{display:block!important;padding:0!important;}
+  body{background:#fff!important;font-size:11pt;}
+  .print-header{display:block!important;}
+  .card{box-shadow:none!important;border:1px solid #ccc!important;break-inside:avoid;}
+  table{page-break-inside:auto;}
+  tr{page-break-inside:avoid;}
+  .print-page-break{page-break-before:always;}
+  @page{margin:1.5cm;size:A4;}
+}
+.print-header{display:none;}
+
+/* ===================== LOGIN ===================== */
+#login-screen{
+  min-height:100vh;display:flex;align-items:center;justify-content:center;
+  background:linear-gradient(145deg,#EFF6FF 0%,#DBEAFE 40%,#BFDBFE 100%);
+  position:relative;overflow:hidden;
+}
+#login-screen::before{
+  content:'';position:absolute;inset:0;
+  background:radial-gradient(ellipse 70% 50% at 30% 20%,rgba(59,130,246,0.12) 0%,transparent 60%),
+             radial-gradient(ellipse 50% 40% at 80% 80%,rgba(37,99,235,0.08) 0%,transparent 60%);
+}
+#login-screen::after{
+  content:'';position:absolute;top:0;left:0;right:0;height:3px;
+  background:linear-gradient(90deg,var(--b500),var(--b300),var(--b600));
+}
+.login-wrap{
+  position:relative;z-index:1;width:100%;max-width:420px;padding:1rem;
+  animation:fadeUp 0.5s ease;
+}
+@keyframes fadeUp{from{opacity:0;transform:translateY(20px)}to{opacity:1;transform:translateY(0)}}
+.login-card{
+  background:#fff;
+  border:1px solid var(--b200);
+  border-radius:var(--rxl);padding:2.5rem 2rem 2rem;
+  box-shadow:0 20px 60px rgba(30,58,138,0.12),0 4px 16px rgba(30,58,138,0.08);
+}
+.login-logo-wrap{text-align:center;margin-bottom:2rem;}
+.login-maquis-logo{
+  width:80px;height:80px;border-radius:20px;object-fit:contain;
+  margin:0 auto 0.75rem;display:block;border:2px solid var(--b100);
+}
+.login-maquis-logo-placeholder{
+  width:80px;height:80px;border-radius:20px;
+  background:linear-gradient(135deg,var(--b500),var(--b700));
+  margin:0 auto 0.75rem;display:flex;align-items:center;justify-content:center;
+  font-family:var(--font-serif);font-size:1.8rem;font-weight:700;color:#fff;
+  letter-spacing:0.02em;cursor:pointer;position:relative;overflow:hidden;
+  border:2px solid var(--b200);
+}
+.login-maquis-logo-placeholder:hover::after{
+  content:'+ Logo';position:absolute;inset:0;background:rgba(30,58,138,0.7);
+  display:flex;align-items:center;justify-content:center;
+  font-size:0.75rem;font-family:var(--font);font-weight:600;color:#fff;letter-spacing:0.05em;
+}
+#logo-upload-input{display:none;}
+.login-logo{
+  font-family:var(--font-serif);font-size:1.8rem;font-weight:700;
+  color:var(--b700);letter-spacing:0.02em;display:block;
+}
+.login-tagline{font-size:0.72rem;color:var(--b400);letter-spacing:0.18em;text-transform:uppercase;margin-top:2px;}
+.login-divider{width:40px;height:2px;background:linear-gradient(90deg,var(--b300),var(--b500));margin:1rem auto;border-radius:2px;}
+
+.l-label{font-size:0.72rem;font-weight:600;color:var(--b700);text-transform:uppercase;letter-spacing:0.1em;margin-bottom:6px;display:block;}
+.l-select{
+  width:100%;padding:0.7rem 0.9rem;border-radius:var(--r);
+  background:#fff;border:1.5px solid var(--b200);
+  color:var(--ink);font-family:var(--font);font-size:0.88rem;margin-bottom:1.5rem;
+  outline:none;transition:border 0.2s,box-shadow 0.2s;
+}
+.l-select:focus{border-color:var(--b400);box-shadow:0 0 0 3px rgba(59,130,246,0.12);}
+
+.pin-dots{display:flex;justify-content:center;gap:12px;margin:0.5rem 0 0.75rem;}
+.pin-dot{
+  width:14px;height:14px;border-radius:50%;
+  border:2px solid var(--b200);background:transparent;
+  transition:all 0.18s;
+}
+.pin-dot.on{background:var(--b500);border-color:var(--b500);transform:scale(1.15);box-shadow:0 0 0 3px rgba(59,130,246,0.2);}
+.pin-err{font-size:0.78rem;color:var(--ruby);text-align:center;min-height:1.1rem;margin-bottom:0.5rem;font-weight:500;}
+
+.numpad{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:1.2rem;}
+.nb{
+  background:var(--n50);border:1.5px solid var(--n200);
+  border-radius:var(--r);color:var(--ink);font-size:1.15rem;font-weight:500;
+  padding:0.85rem 0;cursor:pointer;transition:all 0.15s;font-family:var(--font);
+}
+.nb:hover{background:var(--b50);border-color:var(--b300);color:var(--b700);}
+.nb:active{transform:scale(0.96);}
+.nb.nb-del{font-size:0.88rem;color:var(--n600);}
+.nb.nb-ok{
+  background:var(--b500);color:#fff;
+  border-color:var(--b500);font-weight:700;letter-spacing:0.05em;
+}
+.nb.nb-ok:hover{background:var(--b600);}
+.login-hint{text-align:center;font-size:0.7rem;color:var(--n400);line-height:1.8;}
+
+/* ===================== APP SHELL ===================== */
+#app-screen{display:none;min-height:100vh;}
+
+/* TOPBAR */
+.topbar{
+  height:60px;background:#fff;
+  display:flex;align-items:center;justify-content:space-between;
+  padding:0 1.5rem;position:sticky;top:0;z-index:90;
+  border-bottom:2px solid var(--b100);
+  box-shadow:0 1px 8px rgba(30,58,138,0.06);
+}
+.tb-brand{display:flex;align-items:center;gap:10px;}
+.tb-logo{width:36px;height:36px;border-radius:10px;object-fit:contain;border:1px solid var(--b100);}
+.tb-logo-placeholder{
+  width:36px;height:36px;border-radius:10px;
+  background:linear-gradient(135deg,var(--b500),var(--b700));
+  display:flex;align-items:center;justify-content:center;
+  font-family:var(--font-serif);font-size:0.9rem;font-weight:700;color:#fff;
+}
+.tb-brand-text{font-family:var(--font-serif);font-size:1.3rem;font-weight:700;color:var(--b700);letter-spacing:0.01em;}
+.tb-brand-text span{font-family:var(--font);font-size:0.68rem;font-weight:400;color:var(--b400);margin-left:6px;letter-spacing:0.1em;text-transform:uppercase;}
+.tb-right{display:flex;align-items:center;gap:1rem;}
+.tb-time{font-size:0.78rem;color:var(--n400);font-variant-numeric:tabular-nums;background:var(--n50);padding:4px 10px;border-radius:6px;border:1px solid var(--n200);}
+.tb-badge{
+  display:flex;align-items:center;gap:7px;
+  background:var(--b50);border:1px solid var(--b200);
+  border-radius:30px;padding:4px 12px 4px 5px;
+}
+.tb-av{width:28px;height:28px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:0.68rem;font-weight:700;color:#fff;}
+.tb-name{font-size:0.8rem;color:var(--b800);font-weight:600;}
+.tb-role{font-size:0.65rem;color:var(--b400);margin-left:2px;}
+.btn-exit{
+  background:transparent;border:1.5px solid var(--n200);
+  color:var(--n600);border-radius:8px;padding:5px 12px;
+  font-size:0.73rem;cursor:pointer;font-family:var(--font);
+  transition:all 0.15s;display:flex;align-items:center;gap:4px;
+}
+.btn-exit:hover{border-color:var(--ruby);color:var(--ruby);background:var(--ruby-l);}
+
+/* LAYOUT */
+.shell{display:flex;}
+
+/* SIDEBAR */
+.sidebar{
+  width:220px;background:#fff;min-height:calc(100vh - 60px);
+  padding:1.25rem 0;flex-shrink:0;position:sticky;top:60px;
+  border-right:1px solid var(--b100);
+  display:flex;flex-direction:column;
+  box-shadow:2px 0 8px rgba(30,58,138,0.04);
+}
+.sb-section{
+  font-size:0.62rem;font-weight:700;letter-spacing:0.14em;
+  text-transform:uppercase;color:var(--b300);
+  padding:1rem 1.25rem 0.35rem;
+}
+.sb-item{
+  display:flex;align-items:center;gap:10px;
+  padding:0.62rem 1.25rem;color:var(--n600);font-size:0.83rem;font-weight:400;
+  cursor:pointer;transition:all 0.15s;border-left:3px solid transparent;
+  text-decoration:none;
+}
+.sb-item:hover{color:var(--b600);background:var(--b50);}
+.sb-item.on{color:var(--b600);background:var(--b50);border-left-color:var(--b500);font-weight:600;}
+.sb-item svg{width:16px;height:16px;flex-shrink:0;opacity:0.7;}
+.sb-item.on svg{opacity:1;color:var(--b500);}
+.sb-badge{margin-left:auto;background:var(--b500);color:#fff;border-radius:20px;font-size:0.62rem;font-weight:700;padding:1px 7px;}
+.sb-badge.red{background:var(--ruby);color:#fff;}
+
+/* MAIN */
+.main{flex:1;padding:2rem;overflow-y:auto;display:none;min-height:calc(100vh - 56px);}
+.main.on{display:block;}
+
+/* PAGE HEADER */
+.ph{margin-bottom:2rem;}
+.ph-top{display:flex;align-items:flex-start;justify-content:space-between;flex-wrap:wrap;gap:1rem;}
+.ph-title{font-family:var(--font-serif);font-size:1.75rem;font-weight:600;color:var(--ink);letter-spacing:0.01em;line-height:1.2;}
+.ph-sub{font-size:0.8rem;color:var(--ink3);margin-top:3px;}
+.ph-actions{display:flex;gap:0.6rem;align-items:center;flex-wrap:wrap;}
+
+/* ===================== BUTTONS ===================== */
+.btn{
+  display:inline-flex;align-items:center;gap:6px;
+  padding:0.52rem 1rem;border-radius:var(--r);
+  font-family:var(--font);font-size:0.82rem;font-weight:500;
+  cursor:pointer;border:none;transition:all 0.15s;white-space:nowrap;
+}
+.btn svg{width:14px;height:14px;}
+.btn-gold{background:var(--b500);color:#fff;}
+.btn-gold:hover{background:var(--b600);}
+.btn-outline{background:transparent;border:1px solid var(--border2);color:var(--ink2);}
+.btn-outline:hover{background:var(--n100);border-color:var(--g400);color:var(--g600);}
+.btn-ghost{background:transparent;color:var(--ink3);}
+.btn-ghost:hover{background:var(--n100);color:var(--ink);}
+.btn-danger{background:var(--ruby-l);color:var(--ruby);border:none;}
+.btn-danger:hover{background:var(--ruby);color:#fff;}
+.btn-success{background:var(--emerald-l);color:var(--emerald);}
+.btn-success:hover{background:var(--emerald);color:#fff;}
+.btn-print{background:var(--sapphire-l);color:var(--sapphire);}
+.btn-print:hover{background:var(--sapphire);color:#fff;}
+.btn-sm{padding:0.32rem 0.72rem;font-size:0.76rem;}
+.btn-lg{padding:0.72rem 1.4rem;font-size:0.9rem;}
+
+/* ===================== CARDS ===================== */
+.card{
+  background:#fff;border:1px solid var(--b100);
+  border-radius:var(--rl);box-shadow:var(--sh-sm);
+  overflow:hidden;
+}
+.card-hd{
+  padding:1rem 1.25rem;border-bottom:1px solid var(--border);
+  display:flex;align-items:center;justify-content:space-between;
+  background:var(--n50);
+}
+.card-title{font-size:0.88rem;font-weight:600;color:var(--ink2);}
+.card-body{padding:1.25rem;}
+.card-body-0{padding:0;}
+
+/* ===================== STATS ===================== */
+.stats-row{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:1rem;margin-bottom:1.75rem;}
+.stat{
+  background:#fff;border:1px solid var(--border);border-radius:var(--rl);
+  padding:1.25rem;position:relative;overflow:hidden;transition:transform 0.2s,box-shadow 0.2s;
+}
+.stat:hover{transform:translateY(-1px);box-shadow:var(--sh);}
+.stat-accent{position:absolute;top:0;left:0;right:0;height:2px;}
+.stat-icon{
+  width:36px;height:36px;border-radius:10px;
+  display:flex;align-items:center;justify-content:center;
+  margin-bottom:0.75rem;
+}
+.stat-icon svg{width:18px;height:18px;}
+.stat-lbl{font-size:0.7rem;font-weight:600;color:var(--ink3);text-transform:uppercase;letter-spacing:0.08em;margin-bottom:4px;}
+.stat-val{font-family:var(--font-serif);font-size:1.9rem;font-weight:600;color:var(--ink);line-height:1;}
+.stat-sub{font-size:0.73rem;color:var(--ink3);margin-top:4px;}
+.stat-trend{font-size:0.72rem;font-weight:600;margin-top:6px;display:inline-flex;align-items:center;gap:3px;}
+.stat-trend.up{color:var(--emerald);}
+.stat-trend.dn{color:var(--ruby);}
+
+/* ===================== TABLE ===================== */
+.tbl-wrap{overflow-x:auto;}
+table{width:100%;border-collapse:collapse;}
+thead tr{background:var(--n50);}
+th{
+  text-align:left;font-size:0.68rem;font-weight:600;color:var(--ink3);
+  text-transform:uppercase;letter-spacing:0.09em;
+  padding:0.6rem 1rem;border-bottom:1px solid var(--border);white-space:nowrap;
+}
+td{padding:0.78rem 1rem;font-size:0.83rem;color:var(--ink2);border-bottom:1px solid var(--border);}
+tr:last-child td{border-bottom:none;}
+tbody tr{transition:background 0.1s;}
+tbody tr:hover{background:var(--g50);}
+td strong{color:var(--ink);font-weight:600;}
+
+/* ===================== BADGES ===================== */
+.chip{display:inline-flex;align-items:center;gap:4px;padding:3px 9px;border-radius:20px;font-size:0.7rem;font-weight:600;white-space:nowrap;}
+.chip-g{background:var(--emerald-l);color:var(--emerald);}
+.chip-r{background:var(--ruby-l);color:var(--ruby);}
+.chip-b{background:var(--sapphire-l);color:var(--sapphire);}
+.chip-a{background:var(--amber-l);color:var(--amber);}
+.chip-n{background:var(--n100);color:var(--n600);}
+
+/* ===================== FORMS ===================== */
+.fg{display:flex;flex-direction:column;gap:4px;}
+.fg label{font-size:0.73rem;font-weight:600;color:var(--ink3);letter-spacing:0.04em;}
+.fg input,.fg select,.fg textarea{
+  padding:0.58rem 0.9rem;border:1px solid var(--border2);border-radius:var(--r);
+  font-family:var(--font);font-size:0.85rem;color:var(--ink);
+  background:#fff;transition:border 0.15s,box-shadow 0.15s;outline:none;
+}
+.fg input:focus,.fg select:focus,.fg textarea:focus{
+  border-color:var(--g400);box-shadow:0 0 0 3px rgba(201,146,42,0.1);
+}
+.fgrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(175px,1fr));gap:0.85rem;margin-bottom:1rem;}
+
+/* ===================== VENTE ===================== */
+.vente-layout{display:grid;grid-template-columns:1fr 310px;gap:1.5rem;align-items:start;}
+.cat-strip{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:1rem;}
+.cat-pill{
+  padding:5px 14px;border-radius:30px;font-size:0.78rem;font-weight:500;
+  cursor:pointer;border:1px solid var(--border);background:#fff;color:var(--ink3);
+  transition:all 0.15s;
+}
+.cat-pill.on,.cat-pill:hover{background:var(--g400);color:var(--n900);border-color:var(--g400);}
+.menu-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(115px,1fr));gap:0.6rem;}
+.menu-item{
+  background:#fff;border:1.5px solid var(--b100);border-radius:var(--rl);
+  padding:0.85rem 0.7rem;text-align:center;cursor:pointer;
+  transition:all 0.18s;position:relative;overflow:hidden;
+}
+.menu-item:hover{border-color:var(--b400);transform:translateY(-2px);box-shadow:var(--sh);background:var(--b50);}
+.menu-item:active{transform:scale(0.97);}
+.mi-img-wrap{height:48px;display:flex;align-items:center;justify-content:center;margin-bottom:5px;}
+.mi-logo{width:44px;height:44px;object-fit:contain;border-radius:8px;}
+.mi-em{font-size:1.7rem;line-height:1;}
+.mi-cat{font-size:0.6rem;color:var(--ink3);text-transform:uppercase;letter-spacing:0.06em;}
+.mi-name{font-size:0.79rem;font-weight:500;color:var(--ink);margin-top:3px;line-height:1.3;}
+.mi-price{font-size:0.82rem;color:var(--b600);font-weight:700;margin-top:4px;}
+
+/* PANIER */
+.panier{
+  background:#fff;border:1px solid var(--border);border-radius:var(--rl);
+  box-shadow:var(--sh);position:sticky;top:72px;
+  display:flex;flex-direction:column;max-height:calc(100vh - 90px);
+}
+.pan-hd{padding:1rem 1.1rem;border-bottom:1px solid var(--border);background:var(--n50);}
+.pan-title{font-size:0.9rem;font-weight:600;color:var(--ink);margin-bottom:0.5rem;}
+.sv-pick{
+  width:100%;padding:0.48rem 0.8rem;
+  border:1px solid var(--border);border-radius:8px;
+  font-family:var(--font);font-size:0.8rem;color:var(--ink);
+  background:#fff;outline:none;transition:border 0.15s;
+}
+.sv-pick:focus{border-color:var(--g400);}
+.pan-items{flex:1;overflow-y:auto;padding:0.75rem;}
+.pan-empty{
+  text-align:center;color:var(--ink3);font-size:0.82rem;
+  padding:2.5rem 1rem;
+}
+.pan-empty svg{width:32px;height:32px;margin-bottom:8px;opacity:0.3;display:block;margin:0 auto 8px;}
+.pan-item{
+  display:flex;align-items:center;gap:8px;
+  padding:0.5rem 0.6rem;border-radius:8px;margin-bottom:5px;
+  background:var(--n50);border:1px solid transparent;transition:border 0.15s;
+}
+.pan-item:hover{border-color:var(--border);}
+.pi-name{flex:1;font-size:0.8rem;color:var(--ink);}
+.pi-ctrl{display:flex;align-items:center;gap:5px;}
+.qb{
+  width:22px;height:22px;border-radius:6px;
+  border:1px solid var(--border);background:#fff;
+  color:var(--g600);font-size:1rem;cursor:pointer;
+  display:flex;align-items:center;justify-content:center;line-height:1;
+  transition:all 0.12s;font-family:var(--font);
+}
+.qb:hover{background:var(--g400);color:var(--n900);border-color:var(--g400);}
+.pi-num{font-size:0.82rem;font-weight:700;min-width:18px;text-align:center;color:var(--ink);}
+.pi-amt{font-size:0.8rem;font-weight:700;color:var(--g600);min-width:52px;text-align:right;}
+.pan-ft{padding:1rem 1.1rem;border-top:1px solid var(--border);}
+.pan-total{
+  display:flex;justify-content:space-between;align-items:baseline;
+  margin-bottom:0.75rem;
+}
+.pan-total-lbl{font-size:0.82rem;color:var(--ink3);font-weight:500;}
+.pan-total-amt{font-family:var(--font-serif);font-size:1.4rem;font-weight:600;color:var(--ink);}
+.pan-btns{display:flex;gap:0.5rem;}
+
+/* ===================== MODAL ===================== */
+.overlay{
+  display:none;position:fixed;inset:0;
+  background:rgba(18,17,14,0.6);z-index:200;
+  align-items:center;justify-content:center;padding:1rem;
+  backdrop-filter:blur(4px);
+}
+.overlay.on{display:flex;}
+.modal{
+  background:#fff;border-radius:var(--rxl);width:100%;max-width:460px;
+  box-shadow:var(--sh-lg);animation:popIn 0.2s ease;
+}
+@keyframes popIn{from{opacity:0;transform:scale(0.96)}to{opacity:1;transform:scale(1)}}
+.modal-hd{
+  padding:1.2rem 1.5rem;
+  border-bottom:1px solid var(--border);
+  display:flex;justify-content:space-between;align-items:center;
+}
+.modal-hd h3{font-family:var(--font-serif);font-size:1.25rem;font-weight:600;color:var(--ink);}
+.modal-x{
+  width:28px;height:28px;border-radius:7px;
+  border:none;background:var(--n100);color:var(--ink3);
+  font-size:1.1rem;cursor:pointer;display:flex;align-items:center;justify-content:center;
+  transition:all 0.15s;
+}
+.modal-x:hover{background:var(--ruby-l);color:var(--ruby);}
+.modal-body{padding:1.5rem;}
+.modal-ft{padding:1rem 1.5rem;border-top:1px solid var(--border);display:flex;gap:0.6rem;justify-content:flex-end;}
+
+/* RECEIPT */
+.receipt{
+  font-family:'Courier New',monospace;background:var(--n50);
+  border:1px dashed var(--n200);border-radius:var(--r);
+  padding:1.25rem;font-size:0.78rem;line-height:1.9;
+}
+.rec-title{text-align:center;font-family:var(--font-serif);font-size:1.1rem;font-weight:600;margin-bottom:2px;}
+.rec-sub{text-align:center;font-size:0.7rem;color:var(--ink3);margin-bottom:0.5rem;}
+.rec-div{border:none;border-top:1px dashed var(--n400);margin:0.5rem 0;}
+.rec-row{display:flex;justify-content:space-between;}
+.rec-total{font-weight:700;font-size:0.9rem;color:var(--ink);}
+.rec-footer{text-align:center;font-size:0.7rem;color:var(--ink3);margin-top:0.25rem;}
+
+/* ===================== STOCK ===================== */
+.stock-bar-wrap{min-width:80px;}
+.stock-bar{height:5px;background:var(--n100);border-radius:3px;margin-top:4px;}
+.stock-fill{height:100%;border-radius:3px;transition:width 0.4s;}
+.stock-status{font-size:0.63rem;margin-top:3px;font-weight:600;}
+
+/* ===================== RAPPORT ===================== */
+.rapport-grid{display:grid;grid-template-columns:1fr 1fr;gap:1.25rem;margin-bottom:1.25rem;}
+.bar-chart{display:flex;align-items:flex-end;gap:4px;height:120px;padding-bottom:24px;}
+.bc-col{flex:1;display:flex;flex-direction:column;align-items:center;gap:2px;height:100%;justify-content:flex-end;}
+.bc-bar{width:100%;border-radius:4px 4px 0 0;min-height:3px;transition:height 0.5s;background:var(--g400);opacity:0.8;}
+.bc-bar:hover{opacity:1;}
+.bc-val{font-size:0.62rem;font-weight:600;color:var(--g600);}
+.bc-lbl{font-size:0.6rem;color:var(--ink3);}
+.prog-row{margin-bottom:0.9rem;}
+.prog-lbl{display:flex;justify-content:space-between;font-size:0.8rem;margin-bottom:4px;}
+.prog-bar{height:7px;background:var(--n100);border-radius:4px;}
+.prog-fill{height:100%;border-radius:4px;}
+
+/* SV CARDS */
+.sv-card{
+  background:#fff;border:1px solid var(--border);border-radius:var(--rl);
+  padding:1.1rem;display:flex;align-items:center;gap:0.9rem;
+  transition:box-shadow 0.2s;
+}
+.sv-card:hover{box-shadow:var(--sh);}
+.sv-av{
+  width:44px;height:44px;border-radius:12px;
+  display:flex;align-items:center;justify-content:center;
+  font-size:0.9rem;font-weight:700;color:#fff;flex-shrink:0;
+}
+.sv-info{flex:1;min-width:0;}
+.sv-name{font-size:0.88rem;font-weight:600;color:var(--ink);}
+.sv-mini-stats{display:flex;gap:0.75rem;margin-top:5px;flex-wrap:wrap;}
+.sv-mini-stat{text-align:center;}
+.sv-ms-v{font-weight:700;font-size:0.9rem;color:var(--ink);}
+.sv-ms-l{font-size:0.62rem;color:var(--ink3);}
+
+/* ===================== TOASTS ===================== */
+.toasts{position:fixed;bottom:1.5rem;right:1.5rem;z-index:999;display:flex;flex-direction:column;gap:6px;}
+.toast{
+  background:var(--ink);color:#fff;
+  padding:0.65rem 1.1rem;border-radius:10px;
+  font-size:0.82rem;display:flex;align-items:center;gap:8px;
+  box-shadow:var(--sh-lg);animation:slideR 0.28s ease;
+  border-left:3px solid var(--g400);min-width:220px;
+}
+.toast.ok{border-left-color:#1A5C3A;}
+.toast.err{border-left-color:#8B1A1A;}
+@keyframes slideR{from{transform:translateX(60px);opacity:0}to{transform:translateX(0);opacity:1}}
+
+/* ===================== SERVEUSE PAGE ===================== */
+.sv-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:1rem;}
+.sv-full-card{
+  background:#fff;border:1px solid var(--border);border-radius:var(--rl);
+  padding:1.4rem;text-align:center;transition:box-shadow 0.2s;
+}
+.sv-full-card:hover{box-shadow:var(--sh);}
+.sv-full-av{
+  width:58px;height:58px;border-radius:14px;
+  display:flex;align-items:center;justify-content:center;
+  font-size:1.2rem;font-weight:700;color:#fff;margin:0 auto 0.75rem;
+}
+.sv-full-name{font-size:0.95rem;font-weight:600;color:var(--ink);margin-bottom:3px;}
+.sv-full-stats{display:flex;justify-content:center;gap:1.2rem;margin:0.75rem 0;}
+.sv-full-stat-v{font-family:var(--font-serif);font-size:1.3rem;font-weight:600;color:var(--ink);}
+.sv-full-stat-l{font-size:0.65rem;color:var(--ink3);}
+
+
+/* ===================== IMPAYÉS ===================== */
+.imp-card{
+  background:#fff;border:1.5px solid rgba(139,26,26,0.2);border-radius:var(--rl);
+  padding:1.1rem 1.25rem;transition:box-shadow 0.2s;
+}
+.imp-card:hover{box-shadow:var(--sh);}
+.imp-card-hd{display:flex;align-items:flex-start;justify-content:space-between;gap:0.75rem;margin-bottom:0.75rem;}
+.imp-sv-badge{
+  display:inline-flex;align-items:center;gap:6px;
+  background:var(--ruby-l);border:1px solid rgba(139,26,26,0.15);
+  border-radius:20px;padding:3px 10px 3px 4px;
+}
+.imp-sv-av{width:22px;height:22px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:0.6rem;font-weight:700;color:#fff;}
+.imp-sv-nm{font-size:0.75rem;font-weight:600;color:var(--ruby);}
+.imp-amount{font-family:var(--font-serif);font-size:1.5rem;font-weight:600;color:var(--ink);}
+.imp-meta{font-size:0.73rem;color:var(--ink3);}
+.imp-items{background:var(--n50);border-radius:8px;padding:0.6rem 0.75rem;margin-bottom:0.75rem;font-size:0.8rem;}
+.imp-items-row{display:flex;justify-content:space-between;padding:2px 0;color:var(--ink2);}
+.imp-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:1rem;}
+.imp-empty{text-align:center;padding:3rem;color:var(--ink3);}
+.imp-empty svg{width:40px;height:40px;opacity:0.25;display:block;margin:0 auto 0.75rem;}
+.imp-stat-banner{
+  display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:0.75rem;
+  margin-bottom:1.5rem;
+}
+.imp-stat{
+  background:#fff;border:1px solid var(--border);border-radius:var(--r);
+  padding:0.9rem 1rem;
+}
+.imp-stat-v{font-family:var(--font-serif);font-size:1.5rem;font-weight:600;color:var(--ink);}
+.imp-stat-l{font-size:0.68rem;font-weight:600;color:var(--ink3);text-transform:uppercase;letter-spacing:0.07em;margin-bottom:3px;}
+/* Mode toggle in panier */
+.pay-toggle{display:flex;gap:0;border:1px solid var(--border2);border-radius:8px;overflow:hidden;margin-top:6px;}
+.pay-toggle-btn{
+  flex:1;padding:6px 10px;font-size:0.78rem;font-weight:500;
+  border:none;background:#fff;color:var(--ink3);cursor:pointer;
+  transition:all 0.15s;font-family:var(--font);
+}
+.pay-toggle-btn.on-paid{background:var(--emerald);color:#fff;}
+.pay-toggle-btn.on-unpaid{background:var(--ruby);color:#fff;}
+
+/* ===================== ADMIN ===================== */
+.adm-tab{
+  padding:0.65rem 1.1rem;font-size:0.83rem;font-weight:500;
+  cursor:pointer;color:var(--ink3);border-bottom:2.5px solid transparent;
+  margin-bottom:-2px;transition:all 0.15s;white-space:nowrap;
+}
+.adm-tab:hover{color:var(--b600);}
+.adm-tab.on{color:var(--b600);border-bottom-color:var(--b500);font-weight:600;}
+.adm-panel{display:block;}
+.admin-grid{display:grid;grid-template-columns:1fr 1fr;gap:1.5rem;}
+
+/* ===================== PRINT ZONE ===================== */
+.print-zone{display:none;}
+
+/* ===================== RESPONSIVE ===================== */
+@media(max-width:960px){
+  .sidebar{width:52px;}
+  .sb-item span,.sb-section,.sb-badge{display:none;}
+  .vente-layout{grid-template-columns:1fr;}
+  .panier{position:static;max-height:none;}
+  .rapport-grid{grid-template-columns:1fr;}
+  .admin-grid{grid-template-columns:1fr;}
+}
+@media(max-width:640px){
+  .main{padding:1rem;}
+  .stats-row{grid-template-columns:1fr 1fr;}
+  .ph-title{font-size:1.35rem;}
+}
+::-webkit-scrollbar{width:5px;height:5px;}
+::-webkit-scrollbar-thumb{background:var(--n200);border-radius:3px;}
+</style>
+
+  <!-- Firebase App (modular) -->
+  <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-database-compat.js"></script>
+</head>
+<body>
+
+<!-- ==================== LOGIN ==================== -->
+<!-- ===== FIREBASE SETUP SCREEN ===== -->
+<div id="firebase-setup-screen" style="
+  min-height:100vh;display:flex;align-items:center;justify-content:center;
+  background:linear-gradient(145deg,#0F172A 0%,#1E3A8A 100%);
+  position:relative;overflow:hidden;
+">
+  <div style="
+    background:rgba(255,255,255,0.04);border:1px solid rgba(59,130,246,0.25);
+    border-radius:22px;padding:2.5rem 2rem;width:100%;max-width:520px;margin:1rem;
+    backdrop-filter:blur(20px);box-shadow:0 20px 60px rgba(0,0,0,0.4);
+  ">
+    <!-- Header -->
+    <div style="text-align:center;margin-bottom:2rem;">
+      <div style="width:64px;height:64px;background:linear-gradient(135deg,#3B82F6,#1D4ED8);border-radius:16px;margin:0 auto 1rem;display:flex;align-items:center;justify-content:center;">
+        <svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="1.5" style="width:32px;height:32px"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg>
+      </div>
+      <div style="font-family:'Cormorant Garamond',serif;font-size:1.6rem;font-weight:700;color:#fff;margin-bottom:4px;">MaquisPro</div>
+      <div style="font-size:0.78rem;color:rgba(148,163,184,0.8);letter-spacing:0.12em;text-transform:uppercase;">Configuration temps réel</div>
+    </div>
+
+    <!-- Mode selector -->
+    <div style="display:flex;gap:0;border:1px solid rgba(59,130,246,0.25);border-radius:10px;overflow:hidden;margin-bottom:1.5rem;">
+      <button id="btn-mode-demo" onclick="setMode('demo')" style="flex:1;padding:0.6rem;background:rgba(59,130,246,0.3);color:#fff;border:none;font-family:Inter,sans-serif;font-size:0.82rem;font-weight:600;cursor:pointer;transition:all 0.2s;">
+        🎯 Mode démo
+      </button>
+      <button id="btn-mode-firebase" onclick="setMode('firebase')" style="flex:1;padding:0.6rem;background:transparent;color:#94A3B8;border:none;font-family:Inter,sans-serif;font-size:0.82rem;font-weight:500;cursor:pointer;transition:all 0.2s;">
+        🔥 Firebase (temps réel)
+      </button>
+    </div>
+
+    <!-- Demo mode panel -->
+    <div id="panel-demo">
+      <div style="background:rgba(5,150,105,0.12);border:1px solid rgba(5,150,105,0.25);border-radius:10px;padding:1rem;margin-bottom:1.5rem;font-size:0.83rem;color:#6EE7B7;line-height:1.7;">
+        <strong>Mode démo local</strong><br>
+        Les données sont stockées dans votre navigateur. Elles disparaissent si vous fermez ou rechargez la page.<br><br>
+        ✅ Aucune configuration requise<br>
+        ✅ Fonctionne sans internet<br>
+        ❌ Pas de synchronisation entre appareils
+      </div>
+      <button onclick="startDemo()" style="width:100%;padding:0.75rem;background:#3B82F6;color:#fff;border:none;border-radius:10px;font-family:Inter,sans-serif;font-size:0.9rem;font-weight:600;cursor:pointer;transition:all 0.2s;" onmouseover="this.style.background='#2563EB'" onmouseout="this.style.background='#3B82F6'">
+        Démarrer en mode démo →
+      </button>
+    </div>
+
+    <!-- Firebase mode panel -->
+    <div id="panel-firebase" style="display:none;">
+      <div style="background:rgba(251,191,36,0.08);border:1px solid rgba(251,191,36,0.2);border-radius:10px;padding:0.85rem 1rem;margin-bottom:1.2rem;font-size:0.8rem;color:#FCD34D;line-height:1.65;">
+        📋 <strong>Comment obtenir vos clés Firebase :</strong><br>
+        1. Allez sur <strong>console.firebase.google.com</strong><br>
+        2. Créez un projet → Ajoutez une app Web (icône &lt;/&gt;)<br>
+        3. Copiez les valeurs du bloc <code>firebaseConfig</code> ci-dessous<br>
+        4. Dans Realtime Database → Créez une base → Mode test
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:0.6rem;margin-bottom:0.6rem;">
+        <div>
+          <label style="font-size:0.7rem;color:#94A3B8;display:block;margin-bottom:3px;text-transform:uppercase;letter-spacing:0.08em;">API Key</label>
+          <input id="fb-apiKey" placeholder="AIzaSy..." style="width:100%;padding:0.55rem 0.75rem;background:rgba(255,255,255,0.06);border:1px solid rgba(59,130,246,0.25);border-radius:7px;color:#fff;font-family:Inter,sans-serif;font-size:0.8rem;outline:none;" onfocus="this.style.borderColor='#3B82F6'" onblur="this.style.borderColor='rgba(59,130,246,0.25)'">
+        </div>
+        <div>
+          <label style="font-size:0.7rem;color:#94A3B8;display:block;margin-bottom:3px;text-transform:uppercase;letter-spacing:0.08em;">Auth Domain</label>
+          <input id="fb-authDomain" placeholder="xxx.firebaseapp.com" style="width:100%;padding:0.55rem 0.75rem;background:rgba(255,255,255,0.06);border:1px solid rgba(59,130,246,0.25);border-radius:7px;color:#fff;font-family:Inter,sans-serif;font-size:0.8rem;outline:none;" onfocus="this.style.borderColor='#3B82F6'" onblur="this.style.borderColor='rgba(59,130,246,0.25)'">
+        </div>
+        <div>
+          <label style="font-size:0.7rem;color:#94A3B8;display:block;margin-bottom:3px;text-transform:uppercase;letter-spacing:0.08em;">Database URL</label>
+          <input id="fb-databaseURL" placeholder="https://xxx-default-rtdb.firebaseio.com" style="width:100%;padding:0.55rem 0.75rem;background:rgba(255,255,255,0.06);border:1px solid rgba(59,130,246,0.25);border-radius:7px;color:#fff;font-family:Inter,sans-serif;font-size:0.8rem;outline:none;" onfocus="this.style.borderColor='#3B82F6'" onblur="this.style.borderColor='rgba(59,130,246,0.25)'">
+        </div>
+        <div>
+          <label style="font-size:0.7rem;color:#94A3B8;display:block;margin-bottom:3px;text-transform:uppercase;letter-spacing:0.08em;">Project ID</label>
+          <input id="fb-projectId" placeholder="mon-maquis" style="width:100%;padding:0.55rem 0.75rem;background:rgba(255,255,255,0.06);border:1px solid rgba(59,130,246,0.25);border-radius:7px;color:#fff;font-family:Inter,sans-serif;font-size:0.8rem;outline:none;" onfocus="this.style.borderColor='#3B82F6'" onblur="this.style.borderColor='rgba(59,130,246,0.25)'">
+        </div>
+      </div>
+      <div style="display:flex;align-items:center;gap:0.5rem;margin-bottom:1.2rem;">
+        <input type="checkbox" id="fb-remember" style="width:14px;height:14px;accent-color:#3B82F6;">
+        <label for="fb-remember" style="font-size:0.78rem;color:#94A3B8;cursor:pointer;">Mémoriser la configuration sur cet appareil</label>
+      </div>
+      <button onclick="startFirebase()" style="width:100%;padding:0.75rem;background:#F97316;color:#fff;border:none;border-radius:10px;font-family:Inter,sans-serif;font-size:0.9rem;font-weight:600;cursor:pointer;" onmouseover="this.style.background='#EA580C'" onmouseout="this.style.background='#F97316'">
+        🔥 Connecter Firebase →
+      </button>
+    </div>
+
+    <div id="fb-status" style="margin-top:0.75rem;font-size:0.78rem;text-align:center;min-height:1.2rem;"></div>
+  </div>
+</div>
+
+<div id="login-screen" style="display:none;">
+  <div class="login-wrap">
+    <div class="login-card">
+      <div class="login-logo-wrap">
+        <div class="login-maquis-logo-placeholder" id="login-logo-ph" onclick="document.getElementById('logo-upload-input').click()" title="Cliquer pour ajouter votre logo">
+          M
+        </div>
+        <img class="login-maquis-logo" id="login-logo-img" src="" alt="Logo" style="display:none">
+        <input type="file" id="logo-upload-input" accept="image/*" onchange="uploadLogo(this,'login')">
+        <span class="login-logo" id="login-brand-name">MaquisPro</span>
+        <div class="login-tagline">Système de gestion</div>
+        <div class="login-divider"></div>
+      </div>
+      <label class="l-label" for="login-select">Identité</label>
+      <select class="l-select" id="login-select">
+        <option value="">— Sélectionnez votre nom —</option>
+      </select>
+      <label class="l-label">Code PIN</label>
+      <div class="pin-dots" id="pin-dots">
+        <div class="pin-dot" id="pd0"></div><div class="pin-dot" id="pd1"></div>
+        <div class="pin-dot" id="pd2"></div><div class="pin-dot" id="pd3"></div>
+      </div>
+      <div class="pin-err" id="pin-err"></div>
+      <div class="numpad">
+        <button class="nb" onclick="pk('1')">1</button><button class="nb" onclick="pk('2')">2</button><button class="nb" onclick="pk('3')">3</button>
+        <button class="nb" onclick="pk('4')">4</button><button class="nb" onclick="pk('5')">5</button><button class="nb" onclick="pk('6')">6</button>
+        <button class="nb" onclick="pk('7')">7</button><button class="nb" onclick="pk('8')">8</button><button class="nb" onclick="pk('9')">9</button>
+        <button class="nb nb-del" onclick="pk('del')">⌫ Effacer</button>
+        <button class="nb" onclick="pk('0')">0</button>
+        <button class="nb nb-ok" onclick="pk('ok')">OK ↵</button>
+      </div>
+      <div class="login-hint">Démo : Awa = 1234 · Fatou = 2222 · Marie = 3333 · Patron = 0000</div>
+    </div>
+  </div>
+</div>
+
+<!-- ==================== APP ==================== -->
+<div id="app-screen">
+  <div class="topbar">
+    <div class="tb-brand">
+      <div id="tb-logo-wrap">
+        <div class="tb-logo-placeholder" id="tb-logo-ph" onclick="document.getElementById('logo-upload-topbar').click()" title="Cliquez pour changer le logo">M</div>
+        <img class="tb-logo" id="tb-logo-img" src="" alt="Logo" style="display:none">
+        <input type="file" id="logo-upload-topbar" accept="image/*" style="display:none" onchange="uploadLogo(this,'topbar')">
+      </div>
+      <div class="tb-brand-text">MaquisPro <span>Bar & Maquis</span></div>
+    </div>
+    <div class="tb-right">
+      <div class="tb-time" id="tb-time"></div>
+      <div id="conn-indicator" style="font-size:0.72rem;padding:3px 8px;border-radius:6px;background:var(--n50);border:1px solid var(--n200);display:none"></div>
+      <div id="sync-indicator" style="font-size:0.72rem;padding:3px 8px;border-radius:6px;display:none;align-items:center;gap:4px;"></div>
+      <div class="tb-badge">
+        <div class="tb-av" id="tb-av"></div>
+        <div>
+          <div class="tb-name" id="tb-name"></div>
+          <div class="tb-role" id="tb-role"></div>
+          <div id="tb-mode-badge" style="font-size:0.6rem;color:var(--b400);display:none"></div>
+        </div>
+      </div>
+      <button class="btn-exit no-print" onclick="openHelp()" style="border-color:var(--b200);color:var(--b600);background:var(--b50);" title="Guide d'utilisation">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:13px;height:13px;display:inline-block;vertical-align:-1px;margin-right:3px"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 015.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+        Aide
+      </button>
+      <button class="btn-exit no-print" onclick="logout()">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:13px;height:13px;display:inline-block;vertical-align:-1px;margin-right:3px"><path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4M16 17l5-5-5-5M21 12H9"/></svg>
+        Déconnexion
+      </button>
+    </div>
+  </div>
+
+  <div class="shell">
+    <!-- SIDEBAR -->
+    <nav class="sidebar no-print">
+      <div class="sb-section">Caisse</div>
+      <div class="sb-item" onclick="goTo('vente')">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="2" y="5" width="20" height="14" rx="2"/><path d="M2 10h20"/></svg>
+        <span>Vente rapide</span><span class="sb-badge" id="badge-vente">0</span>
+      </div>
+      <div class="sb-item" onclick="goTo('historique')">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2"/><rect x="9" y="3" width="6" height="4" rx="2"/><path d="M9 12h6M9 16h4"/></svg>
+        <span>Historique</span>
+      </div>
+      <div class="sb-item" onclick="goTo('impayes')">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+        <span>Impayés</span><span class="sb-badge red" id="badge-imp" style="display:none">0</span>
+      </div>
+      <div class="sb-section">Gestion</div>
+      <div class="sb-item" onclick="goTo('serveuses')">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87M16 3.13a4 4 0 010 7.75"/></svg>
+        <span>Serveuses</span>
+      </div>
+      <div class="sb-item" onclick="goTo('stock')">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M21 16V8a2 2 0 00-1-1.73l-7-4a2 2 0 00-2 0l-7 4A2 2 0 003 8v8a2 2 0 001 1.73l7 4a2 2 0 002 0l7-4A2 2 0 0021 16z"/></svg>
+        <span>Stock</span><span class="sb-badge red" id="badge-stock" style="display:none">0</span>
+      </div>
+      <div class="sb-item" id="sb-inventaire-item" onclick="goTo('inventaire')" style="display:none">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2"/><rect x="9" y="3" width="6" height="4" rx="2"/><line x1="9" y1="12" x2="15" y2="12"/><line x1="9" y1="16" x2="12" y2="16"/></svg>
+        <span>Inventaire</span>
+      </div>
+      <div class="sb-item" onclick="goTo('rapport')">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
+        <span>Rapport du jour</span>
+      </div>
+      <div class="sb-item" onclick="goTo('clotures')">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/><line x1="8" y1="14" x2="8.01" y2="14"/><line x1="12" y1="14" x2="12.01" y2="14"/><line x1="16" y1="14" x2="16.01" y2="14"/></svg>
+        <span>Clôtures passées</span>
+        <span class="sb-badge" id="badge-clotures">0</span>
+      </div>
+      <div class="sb-section" id="sb-admin-section" style="display:none">Admin</div>
+      <div class="sb-item" id="sb-admin-item" onclick="goTo('admin')" style="display:none">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="8" r="4"/><path d="M20 21a8 8 0 10-16 0"/></svg>
+        <span>Administration</span>
+      </div>
+    </nav>
+
+    <!-- ========== VENTE ========== -->
+    <div class="main" id="page-vente">
+      <div class="ph">
+        <div class="ph-top">
+          <div><div class="ph-title">Vente rapide</div><div class="ph-sub" id="vente-sub">Enregistrez une vente</div></div>
+        </div>
+      </div>
+      <div class="vente-layout">
+        <div>
+          <div class="cat-strip" id="cat-strip"></div>
+          <div class="menu-grid" id="menu-grid"></div>
+        </div>
+        <div class="panier">
+          <div class="pan-hd">
+            <div class="pan-title">Commande en cours</div>
+            <div class="fg">
+              <label>Serveuse concernée</label>
+              <select class="sv-pick" id="pan-sv"><option value="">— Vente directe —</option></select>
+            </div>
+            <div class="fg" style="margin-top:6px">
+              <label>Statut de la vente</label>
+              <div class="pay-toggle">
+                <button class="pay-toggle-btn on-paid" id="toggle-paid" onclick="setPaid(true)">✓ Soldée</button>
+                <button class="pay-toggle-btn" id="toggle-unpaid" onclick="setPaid(false)">⏳ Non soldée</button>
+              </div>
+            </div>
+          </div>
+          <div class="pan-items" id="pan-items">
+            <div class="pan-empty">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M6 2L3 6v14a2 2 0 002 2h14a2 2 0 002-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/><path d="M16 10a4 4 0 01-8 0"/></svg>
+              Sélectionnez des produits
+            </div>
+          </div>
+          <div class="pan-ft">
+            <div class="pan-total">
+              <span class="pan-total-lbl">Total à payer</span>
+              <span class="pan-total-amt" id="pan-total">0 FCFA</span>
+            </div>
+            <div class="pan-btns">
+              <button class="btn btn-danger btn-sm" onclick="clearPan()">Vider</button>
+              <button class="btn btn-gold" style="flex:1" id="btn-enc" onclick="openEnc()">Encaisser →</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ========== HISTORIQUE ========== -->
+    <div class="main" id="page-historique">
+      <div class="ph">
+        <div class="ph-top">
+          <div>
+            <div class="ph-title">Historique des ventes</div>
+            <div class="ph-sub">Toutes les transactions — journées en cours et clôturées</div>
+          </div>
+          <div class="ph-actions no-print">
+            <button class="btn btn-print btn-sm" onclick="printPage('historique')">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 01-2-2v-5a2 2 0 012-2h16a2 2 0 012 2v5a2 2 0 01-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg>
+              Imprimer
+            </button>
+          </div>
+        </div>
+      </div>
+      <div class="print-header" id="hist-print-hd"></div>
+
+      <!-- Stats rapides -->
+      <div id="hist-stats-banner" class="stats-row" style="margin-bottom:1rem;"></div>
+
+      <!-- Filtres -->
+      <div class="card no-print" style="margin-bottom:1rem;padding:1rem;">
+        <div style="display:flex;gap:0.75rem;flex-wrap:wrap;align-items:flex-end;">
+          <div class="fg">
+            <label>Journée / Clôture</label>
+            <select id="hist-cloture" onchange="renderHist()" style="min-width:160px">
+              <option value="today">Journée en cours</option>
+              <option value="all">Tout l'historique</option>
+            </select>
+          </div>
+          <div class="fg">
+            <label>Serveuse</label>
+            <select id="hist-sv" onchange="renderHist()" style="min-width:140px">
+              <option value="">Toutes</option>
+            </select>
+          </div>
+          <div class="fg">
+            <label>Statut</label>
+            <select id="hist-st" onchange="renderHist()">
+              <option value="">Tous</option><option>Payé</option><option>Annulé</option><option>Impayé</option>
+            </select>
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-body-0 tbl-wrap">
+          <table>
+            <thead><tr><th>N°</th><th>Journée</th><th>Heure</th><th>Serveuse</th><th>Articles</th><th>Qté</th><th>Montant</th><th>Paiement</th><th>Statut</th><th class="no-print">Actions</th></tr></thead>
+            <tbody id="hist-tbody"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- ========== SERVEUSES ========== -->
+    <div class="main" id="page-serveuses">
+      <div class="ph">
+        <div class="ph-top">
+          <div><div class="ph-title">Serveuses</div><div class="ph-sub">Équipe de service et performances</div></div>
+          <div class="ph-actions no-print" id="sv-add-btn-wrap"></div>
+        </div>
+      </div>
+      <div class="sv-grid" id="sv-grid"></div>
+    </div>
+
+    <!-- ========== STOCK ========== -->
+    <div class="main" id="page-stock">
+      <div class="ph">
+        <div class="ph-top">
+          <div>
+            <div class="ph-title">Stock & Inventaire</div>
+            <div class="ph-sub" id="stock-sub">Suivi des produits</div>
+          </div>
+          <div class="ph-actions no-print">
+            <button class="btn btn-print btn-sm" onclick="printPage('stock')">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 01-2-2v-5a2 2 0 012-2h16a2 2 0 012 2v5a2 2 0 01-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg>
+              Imprimer l'inventaire
+            </button>
+            <div id="stock-add-btn"></div>
+          </div>
+        </div>
+      </div>
+      <div class="print-header" id="stock-print-hd"></div>
+      <div id="stock-ro-banner" style="display:none;background:var(--sapphire-l);border:1px solid rgba(26,58,107,0.15);border-radius:var(--r);padding:0.7rem 1rem;margin-bottom:1rem;font-size:0.82rem;color:var(--sapphire);display:flex;align-items:center;gap:8px;no-print:true">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:16px;height:16px;flex-shrink:0"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0110 0v4"/></svg>
+        Vue lecture seule — seul le <strong style="margin:0 3px">Patron</strong> peut modifier le stock.
+      </div>
+      <div class="no-print" style="display:flex;gap:6px;margin-bottom:1rem;flex-wrap:wrap;">
+        <button class="cat-pill on" onclick="filterStock('tous',this)">Tous</button>
+        <button class="cat-pill" onclick="filterStock('critique',this)">⚠ Critique</button>
+      </div>
+      <div class="stats-row" id="stock-summary" style="margin-bottom:1rem;"></div>
+      <div class="card">
+        <div class="card-body-0 tbl-wrap">
+          <table>
+            <thead id="stock-thead"><tr><th>Produit</th><th>Catégorie</th><th>En stock</th><th>Minimum</th><th>Niveau</th><th id="th-pachat">Prix achat</th><th>Prix vente</th><th id="th-marge">Marge/unité</th><th id="th-benef">Bénéfice stock</th><th id="stock-act-th" class="no-print">Actions</th></tr></thead>
+            <tbody id="stock-tbody"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- ========== INVENTAIRE ========== -->
+    <div class="main" id="page-inventaire">
+      <div class="ph">
+        <div class="ph-top">
+          <div><div class="ph-title">Inventaire physique</div><div class="ph-sub">Comptage réel vs stock théorique</div></div>
+          <div class="ph-actions no-print">
+            <button class="btn btn-outline btn-sm" onclick="resetInventaire()">↺ Réinitialiser</button>
+            <button class="btn btn-print btn-sm" onclick="printPage('inventaire')">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 01-2-2v-5a2 2 0 012-2h16a2 2 0 012 2v5a2 2 0 01-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg>
+              Imprimer
+            </button>
+            <button class="btn btn-gold btn-sm" onclick="validerInventaire()">✓ Valider l'inventaire</button>
+          </div>
+        </div>
+      </div>
+      <div class="print-header" id="inv-print-hd"></div>
+      <!-- Summary -->
+      <div class="stats-row" id="inv-summary" style="margin-bottom:1.25rem;"></div>
+      <!-- Instructions -->
+      <div class="no-print" style="background:var(--b50);border:1px solid var(--b100);border-radius:var(--r);padding:0.85rem 1.1rem;margin-bottom:1.25rem;font-size:0.82rem;color:var(--b700);display:flex;align-items:center;gap:10px;">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:18px;height:18px;flex-shrink:0"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+        Saisissez la <strong style="margin:0 3px">quantité réelle comptée</strong> pour chaque article. Les écarts sont calculés automatiquement. Cliquez <strong style="margin:0 3px">Valider</strong> pour mettre à jour le stock.
+      </div>
+      <div class="card">
+        <div class="card-body-0 tbl-wrap">
+          <table>
+            <thead><tr><th>Produit</th><th>Catégorie</th><th>Stock théorique</th><th>Quantité comptée</th><th>Écart</th><th>Valeur écart</th><th>Statut</th></tr></thead>
+            <tbody id="inv-tbody"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- ========== IMPAYÉS ========== -->
+    <div class="main" id="page-impayes">
+      <div class="ph">
+        <div class="ph-top">
+          <div><div class="ph-title">Factures impayées</div><div class="ph-sub">Ventes en attente de règlement</div></div>
+          <div class="ph-actions no-print">
+            <button class="btn btn-print btn-sm" onclick="printPage('impayes')">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 01-2-2v-5a2 2 0 012-2h16a2 2 0 012 2v5a2 2 0 01-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg>
+              Imprimer les impayés
+            </button>
+          </div>
+        </div>
+      </div>
+      <div class="print-header" id="imp-print-hd"></div>
+      <div class="imp-stat-banner" id="imp-stats"></div>
+      <!-- Filter -->
+      <div class="no-print" style="display:flex;gap:0.75rem;margin-bottom:1rem;flex-wrap:wrap;align-items:flex-end;">
+        <div class="fg">
+          <label>Filtrer par serveuse</label>
+          <select id="imp-filter-sv" onchange="renderImpayes()" style="min-width:150px">
+            <option value="">Toutes</option>
+          </select>
+        </div>
+      </div>
+      <div id="imp-grid" class="imp-grid"></div>
+    </div>
+
+    <!-- ========== RAPPORT ========== -->
+    <div class="main" id="page-rapport">
+      <div class="ph">
+        <div class="ph-top">
+          <div>
+            <div class="ph-title">Rapport du jour</div>
+            <div class="ph-sub" id="rapport-date"></div>
+          </div>
+          <div class="ph-actions no-print">
+            <button class="btn btn-print btn-sm" onclick="printPage('rapport')">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 01-2-2v-5a2 2 0 012-2h16a2 2 0 012 2v5a2 2 0 01-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg>
+              Imprimer
+            </button>
+            <button class="btn btn-gold btn-sm" onclick="ouvrirCloture()" style="background:var(--ruby);color:#fff;">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:14px;height:14px"><path d="M18 6L6 18M6 6l12 12"/></svg>
+              Clôturer la journée
+            </button>
+          </div>
+        </div>
+      </div>
+      <div class="print-header" id="rapport-print-hd"></div>
+      <div class="stats-row" id="rapport-stats"></div>
+      <div class="card" style="margin-bottom:1.25rem;">
+        <div class="card-hd"><span class="card-title">Top produits du jour</span></div>
+        <div class="card-body" id="rp-top"></div>
+      </div>
+      <div class="card" style="margin-bottom:1.25rem;">
+        <div class="card-hd"><span class="card-title">Performance par serveuse</span></div>
+        <div class="card-body">
+          <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:1rem;" id="rp-sv-cards"></div>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-hd"><span class="card-title">Détail des ventes par serveuse</span></div>
+        <div class="card-body-0 tbl-wrap">
+          <table>
+            <thead><tr><th>Serveuse</th><th>Produit</th><th>Bouteilles / Unités</th><th>Montant généré</th></tr></thead>
+            <tbody id="rp-sv-detail"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- ========== CLÔTURES ========== -->
+    <div class="main" id="page-clotures">
+      <div class="ph">
+        <div class="ph-top">
+          <div><div class="ph-title">Clôtures journalières</div><div class="ph-sub">Historique de toutes les journées clôturées</div></div>
+          <div class="ph-actions no-print">
+            <button class="btn btn-print btn-sm" onclick="printPage('clotures')">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 01-2-2v-5a2 2 0 012-2h16a2 2 0 012 2v5a2 2 0 01-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg>
+              Imprimer
+            </button>
+          </div>
+        </div>
+      </div>
+      <div class="print-header" id="clotures-print-hd"></div>
+      <div id="clotures-summary" class="stats-row" style="margin-bottom:1.5rem;"></div>
+      <div id="clotures-list"></div>
+    </div>
+
+    <!-- ========== ADMIN ========== -->
+    <div class="main" id="page-admin">
+      <div class="ph">
+        <div class="ph-top">
+          <div><div class="ph-title">Administration</div><div class="ph-sub">Accès exclusif Patron</div></div>
+        </div>
+      </div>
+
+      <!-- Admin Tabs -->
+      <div style="display:flex;gap:0;border-bottom:2px solid var(--b100);margin-bottom:1.5rem;flex-wrap:wrap;">
+        <div class="adm-tab on" onclick="admTab('caissières')">👤 Caissières</div>
+        <div class="adm-tab" onclick="admTab('serveuses-adm')">🧑‍🍳 Serveuses</div>
+        <div class="adm-tab" onclick="admTab('categories')">🏷️ Catégories & Menu</div>
+        <div class="adm-tab" onclick="admTab('annulations')">🚫 Annulations</div>
+        <div class="adm-tab" onclick="admTab('parametres')">⚙️ Paramètres</div>
+      </div>
+
+      <!-- Tab: Caissières -->
+      <div class="adm-panel" id="adm-caissières">
+        <div style="display:flex;justify-content:flex-end;margin-bottom:1rem;">
+          <button class="btn btn-gold" onclick="openModal('modal-c')">+ Ajouter une caissière</button>
+        </div>
+        <div class="card">
+          <div class="card-body-0 tbl-wrap">
+            <table>
+              <thead><tr><th>Nom</th><th>PIN</th><th>Rôle</th><th>Actions</th></tr></thead>
+              <tbody id="c-tbody"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <!-- Tab: Serveuses -->
+      <div class="adm-panel" id="adm-serveuses-adm" style="display:none">
+        <div style="display:flex;justify-content:flex-end;margin-bottom:1rem;">
+          <button class="btn btn-gold" onclick="openModal('modal-sv')">+ Ajouter une serveuse</button>
+        </div>
+        <div id="adm-sv-grid"></div>
+      </div>
+
+      <!-- Tab: Catégories & Menu -->
+      <div class="adm-panel" id="adm-categories" style="display:none">
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:1.5rem;flex-wrap:wrap;">
+          <!-- Catégories -->
+          <div class="card">
+            <div class="card-hd">
+              <span class="card-title">Catégories</span>
+              <button class="btn btn-gold btn-sm" onclick="openModal('modal-add-cat')">+ Ajouter</button>
+            </div>
+            <div class="card-body-0">
+              <table>
+                <thead><tr><th>Nom</th><th>Emoji</th><th>Articles</th><th>Actions</th></tr></thead>
+                <tbody id="cat-tbody"></tbody>
+              </table>
+            </div>
+          </div>
+          <!-- Menu / Boissons -->
+          <div class="card">
+            <div class="card-hd">
+              <span class="card-title">Articles du menu</span>
+              <button class="btn btn-gold btn-sm" onclick="openModal('modal-stock')">+ Ajouter</button>
+            </div>
+            <div class="card-body-0 tbl-wrap" style="max-height:400px;overflow-y:auto">
+              <table>
+                <thead><tr><th>Article</th><th>Catégorie</th><th>Prix</th><th>Actions</th></tr></thead>
+                <tbody id="menu-admin-tbody"></tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Tab: Annulations (trace) -->
+      <div class="adm-panel" id="adm-annulations" style="display:none">
+        <div class="card">
+          <div class="card-hd"><span class="card-title">Journal des annulations</span></div>
+          <div class="card-body-0 tbl-wrap">
+            <table>
+              <thead><tr><th>Heure</th><th>Vente annulée</th><th>Serveuse</th><th>Annulée par</th><th>Montant</th><th>Articles</th></tr></thead>
+              <tbody id="annul-tbody"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <!-- Tab: Paramètres -->
+      <div class="adm-panel" id="adm-parametres" style="display:none">
+        <div class="card">
+          <div class="card-hd"><span class="card-title">Informations du commerce</span></div>
+          <div class="card-body">
+            <div style="display:flex;align-items:center;gap:1.25rem;margin-bottom:1.25rem;padding:1rem;background:var(--b50);border-radius:var(--r);border:1px solid var(--b100)">
+              <div id="param-logo-preview" style="width:72px;height:72px;border-radius:16px;border:2px dashed var(--b200);display:flex;align-items:center;justify-content:center;overflow:hidden;flex-shrink:0;cursor:pointer;background:#fff;" onclick="document.getElementById('param-logo-input').click()">
+                <svg viewBox="0 0 24 24" fill="none" stroke="var(--b300)" stroke-width="1.5" style="width:28px;height:28px"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
+              </div>
+              <div>
+                <div style="font-size:0.85rem;font-weight:600;color:var(--ink);margin-bottom:4px">Logo de votre maquis</div>
+                <div style="font-size:0.75rem;color:var(--ink3);margin-bottom:8px">Affiché sur la connexion et la barre supérieure</div>
+                <input type="file" id="param-logo-input" accept="image/*" style="display:none" onchange="uploadLogoFromParam(this)">
+                <button class="btn btn-outline btn-sm" onclick="document.getElementById('param-logo-input').click()">Choisir un logo</button>
+              </div>
+            </div>
+            <div class="fgrid">
+              <div class="fg"><label>Nom du maquis</label><input type="text" id="p-nom" value="Maquis Chez Maman" oninput="updateBrandName(this.value)"></div>
+              <div class="fg"><label>Téléphone</label><input type="text" id="p-tel" value="+225 07 00 00 00"></div>
+              <div class="fg"><label>Ville / Quartier</label><input type="text" id="p-ville" value="Abidjan, Marcory"></div>
+            </div>
+            <button class="btn btn-gold" onclick="toast('Paramètres sauvegardés ✓','ok')">Sauvegarder</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div><!-- /shell -->
+</div><!-- /app-screen -->
+
+<!-- ==================== MODALS ==================== -->
+
+<!-- Encaissement -->
+<div class="overlay" id="modal-enc">
+  <div class="modal" style="max-width:420px">
+    <div class="modal-hd"><h3 id="enc-modal-title">Enregistrer la vente</h3><button class="modal-x" onclick="closeModal('modal-enc')">×</button></div>
+    <div class="modal-body">
+      <div id="enc-recap" style="margin-bottom:1rem;"></div>
+      <!-- ZONE PAIEMENT (soldée) -->
+      <div id="enc-payment-zone">
+        <div class="fg" style="margin-bottom:0.9rem">
+          <label>Mode de paiement</label>
+          <select id="enc-mode">
+            <option>Espèces</option><option>MTN Mobile Money</option>
+            <option>Orange Money</option><option>Carte bancaire</option>
+          </select>
+        </div>
+        <div class="fg" style="margin-bottom:0.9rem">
+          <label>Montant reçu (FCFA)</label>
+          <input type="number" id="enc-recu" placeholder="Ex : 2 000" oninput="calcMonnaie()">
+        </div>
+        <div style="background:var(--emerald-l);border:1px solid rgba(26,92,58,0.15);border-radius:var(--r);padding:0.75rem 1rem;display:flex;justify-content:space-between;font-weight:600;">
+          <span style="color:var(--emerald);">Monnaie à rendre</span>
+          <span style="color:var(--emerald);" id="enc-monnaie">— FCFA</span>
+        </div>
+      </div>
+      <!-- ZONE IMPAYÉ (non soldée) -->
+      <div id="enc-unpaid-zone" style="display:none">
+        <div style="background:var(--ruby-l);border:1px solid rgba(139,26,26,0.15);border-radius:var(--r);padding:0.9rem 1rem;margin-bottom:0.9rem;">
+          <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px;">
+            <svg viewBox="0 0 24 24" fill="none" stroke="var(--ruby)" stroke-width="2" style="width:16px;height:16px;flex-shrink:0"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+            <span style="font-size:0.82rem;font-weight:600;color:var(--ruby);">Facture impayée</span>
+          </div>
+          <div style="font-size:0.78rem;color:var(--ruby);opacity:0.8">Cette vente sera enregistrée comme impayée. Le stock sera débité. Le règlement devra être effectué ultérieurement.</div>
+        </div>
+      </div>
+    </div>
+    <div class="modal-ft">
+      <button class="btn btn-outline" onclick="closeModal('modal-enc')">Annuler</button>
+      <button class="btn btn-gold btn-lg" id="enc-confirm-btn" onclick="confirmVente()">Confirmer ✓</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal solde impayé -->
+<div class="overlay" id="modal-solde">
+  <div class="modal" style="max-width:400px">
+    <div class="modal-hd"><h3>Solder la facture</h3><button class="modal-x" onclick="closeModal('modal-solde')">×</button></div>
+    <div class="modal-body">
+      <div id="solde-recap" style="margin-bottom:1rem;"></div>
+      <div class="fg" style="margin-bottom:0.9rem">
+        <label>Mode de paiement</label>
+        <select id="solde-mode">
+          <option>Espèces</option><option>MTN Mobile Money</option>
+          <option>Orange Money</option><option>Carte bancaire</option>
+        </select>
+      </div>
+      <div class="fg" style="margin-bottom:0.9rem">
+        <label>Montant reçu (FCFA)</label>
+        <input type="number" id="solde-recu" placeholder="Ex : 2 000" oninput="calcSoldeMonnaie()">
+      </div>
+      <div style="background:var(--emerald-l);border:1px solid rgba(26,92,58,0.15);border-radius:var(--r);padding:0.75rem 1rem;display:flex;justify-content:space-between;font-weight:600;">
+        <span style="color:var(--emerald);">Monnaie à rendre</span>
+        <span style="color:var(--emerald);" id="solde-monnaie">— FCFA</span>
+      </div>
+    </div>
+    <div class="modal-ft">
+      <button class="btn btn-outline" onclick="closeModal('modal-solde')">Annuler</button>
+      <button class="btn btn-gold btn-lg" onclick="confirmerSolde()">Solder ✓</button>
+    </div>
+  </div>
+</div>
+
+<!-- Reçu -->
+<div class="overlay" id="modal-recu">
+  <div class="modal" style="max-width:340px">
+    <div class="modal-hd"><h3>Reçu de vente</h3><button class="modal-x" onclick="closeModal('modal-recu')">×</button></div>
+    <div class="modal-body" id="recu-body"></div>
+    <div class="modal-ft">
+      <button class="btn btn-outline" onclick="closeModal('modal-recu')">Fermer</button>
+      <button class="btn btn-print" onclick="window.print()">🖨 Imprimer</button>
+    </div>
+  </div>
+</div>
+
+<!-- Ajouter serveuse -->
+<div class="overlay" id="modal-sv">
+  <div class="modal">
+    <div class="modal-hd"><h3>Ajouter une serveuse</h3><button class="modal-x" onclick="closeModal('modal-sv')">×</button></div>
+    <div class="modal-body">
+      <div class="fgrid">
+        <div class="fg"><label>Prénom et nom</label><input type="text" id="sv-nom" placeholder="ex : Aminata Koné"></div>
+        <div class="fg"><label>Téléphone</label><input type="text" id="sv-tel" placeholder="+225 …"></div>
+      </div>
+    </div>
+    <div class="modal-ft">
+      <button class="btn btn-outline" onclick="closeModal('modal-sv')">Annuler</button>
+      <button class="btn btn-gold" onclick="addSv()">Ajouter</button>
+    </div>
+  </div>
+</div>
+
+<!-- Ajouter stock -->
+<div class="overlay" id="modal-stock">
+  <div class="modal">
+    <div class="modal-hd"><h3>Ajouter un article</h3><button class="modal-x" onclick="closeModal('modal-stock')">×</button></div>
+    <div class="modal-body">
+      <div class="fgrid">
+        <div class="fg"><label>Nom du produit</label><input type="text" id="st-nom" placeholder="ex : Bière Flag 65cl"></div>
+        <div class="fg"><label>Catégorie</label>
+          <select id="st-cat" id="st-cat"></select>
+        </div>
+        <div class="fg"><label>Emoji (si pas de logo)</label><input type="text" id="st-em" placeholder="🍺" maxlength="2"></div>
+        <div class="fg"><label>Quantité initiale</label><input type="number" id="st-qty" placeholder="0" min="0"></div>
+        <div class="fg"><label>Stock minimum</label><input type="number" id="st-min" placeholder="5" min="0"></div>
+        <div class="fg"><label>Unité</label><input type="text" id="st-unit" placeholder="bouteilles"></div>
+        <div class="fg"><label>Prix d'achat (FCFA)</label><input type="number" id="st-pachat" placeholder="300" min="0"></div>
+        <div class="fg"><label>Prix de vente (FCFA)</label><input type="number" id="st-prix" placeholder="500" min="0"></div>
+      </div>
+      <!-- Logo boisson -->
+      <div style="margin-top:0.75rem;">
+        <label style="font-size:0.73rem;font-weight:600;color:var(--ink3);letter-spacing:0.04em;display:block;margin-bottom:6px;">Logo de la boisson (optionnel)</label>
+        <div style="display:flex;align-items:center;gap:1rem;">
+          <div id="st-logo-preview" style="width:60px;height:60px;border-radius:12px;border:2px dashed var(--b200);display:flex;align-items:center;justify-content:center;cursor:pointer;background:var(--b50);transition:all 0.15s;overflow:hidden;" onclick="document.getElementById('st-logo-input').click()" title="Cliquer pour ajouter un logo">
+            <svg viewBox="0 0 24 24" fill="none" stroke="var(--b300)" stroke-width="1.5" style="width:24px;height:24px"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
+          </div>
+          <div>
+            <input type="file" id="st-logo-input" accept="image/*" style="display:none" onchange="previewStockLogo(this)">
+            <button class="btn btn-outline btn-sm" onclick="document.getElementById('st-logo-input').click()">Choisir une image</button>
+            <div style="font-size:0.72rem;color:var(--ink3);margin-top:4px;">PNG, JPG — max 1MB</div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="modal-ft">
+      <button class="btn btn-outline" onclick="closeModal('modal-stock')">Annuler</button>
+      <button class="btn btn-gold" onclick="addStock()">Ajouter</button>
+    </div>
+  </div>
+</div>
+
+<!-- Ajouter caissière -->
+<!-- Modal ajouter catégorie -->
+<div class="overlay" id="modal-add-cat">
+  <div class="modal" style="max-width:380px">
+    <div class="modal-hd"><h3>Ajouter une catégorie</h3><button class="modal-x" onclick="closeModal('modal-add-cat')">×</button></div>
+    <div class="modal-body">
+      <div class="fgrid">
+        <div class="fg"><label>Nom de la catégorie</label><input type="text" id="cat-nom" placeholder="ex : Vins"></div>
+        <div class="fg"><label>Emoji</label><input type="text" id="cat-em" placeholder="🍷" maxlength="2"></div>
+      </div>
+    </div>
+    <div class="modal-ft">
+      <button class="btn btn-outline" onclick="closeModal('modal-add-cat')">Annuler</button>
+      <button class="btn btn-gold" onclick="addCat()">Ajouter</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal modifier catégorie -->
+<div class="overlay" id="modal-edit-cat">
+  <div class="modal" style="max-width:380px">
+    <div class="modal-hd"><h3>Modifier la catégorie</h3><button class="modal-x" onclick="closeModal('modal-edit-cat')">×</button></div>
+    <div class="modal-body">
+      <input type="hidden" id="edit-cat-old">
+      <div class="fgrid">
+        <div class="fg"><label>Nouveau nom</label><input type="text" id="edit-cat-nom" placeholder="Nouveau nom"></div>
+      </div>
+      <div style="background:var(--b50);border:1px solid var(--b100);border-radius:var(--r);padding:0.75rem;margin-top:0.5rem;font-size:0.8rem;color:var(--ink3);">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:14px;height:14px;display:inline;vertical-align:-2px;margin-right:4px"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+        Tous les articles liés seront automatiquement mis à jour avec le nouveau nom.
+      </div>
+    </div>
+    <div class="modal-ft">
+      <button class="btn btn-outline" onclick="closeModal('modal-edit-cat')">Annuler</button>
+      <button class="btn btn-gold" onclick="saveEditCat()">Renommer</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal confirmation suppression catégorie -->
+<div class="overlay" id="modal-confirm-cat">
+  <div class="modal" style="max-width:400px">
+    <div class="modal-hd">
+      <h3 style="color:var(--ruby)">⚠ Supprimer la catégorie</h3>
+      <button class="modal-x" onclick="closeModal('modal-confirm-cat')">×</button>
+    </div>
+    <div class="modal-body">
+      <div id="confirm-cat-msg"></div>
+    </div>
+    <div class="modal-ft">
+      <button class="btn btn-outline" onclick="closeModal('modal-confirm-cat')">Annuler</button>
+      <button class="btn btn-danger" id="confirm-cat-btn" onclick="executDeleteCat()">Supprimer tout ✕</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal modifier article -->
+<div class="overlay" id="modal-edit-item">
+  <div class="modal">
+    <div class="modal-hd"><h3>Modifier l'article</h3><button class="modal-x" onclick="closeModal('modal-edit-item')">×</button></div>
+    <div class="modal-body">
+      <input type="hidden" id="edit-item-id">
+      <div class="fgrid">
+        <div class="fg"><label>Nom</label><input type="text" id="edit-nom"></div>
+        <div class="fg"><label>Catégorie</label><select id="edit-cat"></select></div>
+        <div class="fg"><label>Emoji</label><input type="text" id="edit-em" maxlength="2"></div>
+        <div class="fg"><label>Prix d'achat (FCFA)</label><input type="number" id="edit-pachat" min="0"></div>
+        <div class="fg"><label>Prix de vente (FCFA)</label><input type="number" id="edit-prix" min="0"></div>
+        <div class="fg"><label>Stock minimum</label><input type="number" id="edit-min" min="0"></div>
+        <div class="fg"><label>Unité</label><input type="text" id="edit-unit"></div>
+      </div>
+      <div style="margin-top:0.75rem">
+        <label style="font-size:0.73rem;font-weight:600;color:var(--ink3);display:block;margin-bottom:6px">Logo de la boisson</label>
+        <div style="display:flex;align-items:center;gap:1rem;">
+          <div id="edit-logo-preview" style="width:52px;height:52px;border-radius:10px;border:2px dashed var(--b200);display:flex;align-items:center;justify-content:center;cursor:pointer;overflow:hidden;background:var(--b50);" onclick="document.getElementById('edit-logo-input').click()">
+            <svg viewBox="0 0 24 24" fill="none" stroke="var(--b300)" stroke-width="1.5" style="width:20px;height:20px"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
+          </div>
+          <input type="file" id="edit-logo-input" accept="image/*" style="display:none" onchange="previewEditLogo(this)">
+          <button class="btn btn-outline btn-sm" onclick="document.getElementById('edit-logo-input').click()">Changer l'image</button>
+        </div>
+      </div>
+    </div>
+    <div class="modal-ft">
+      <button class="btn btn-outline" onclick="closeModal('modal-edit-item')">Annuler</button>
+      <button class="btn btn-gold" onclick="saveEditItem()">Enregistrer</button>
+    </div>
+  </div>
+</div>
+
+<div class="overlay" id="modal-c">
+  <div class="modal">
+    <div class="modal-hd"><h3>Ajouter une caissière</h3><button class="modal-x" onclick="closeModal('modal-c')">×</button></div>
+    <div class="modal-body">
+      <div class="fgrid">
+        <div class="fg"><label>Prénom et nom</label><input type="text" id="c-nom" placeholder="ex : Adjoua Kouassi"></div>
+        <div class="fg"><label>Code PIN (4 chiffres)</label><input type="text" id="c-pin" placeholder="ex : 1234" maxlength="4"></div>
+        <div class="fg"><label>Rôle</label><select id="c-role"><option>Caissière</option><option>Admin</option></select></div>
+      </div>
+    </div>
+    <div class="modal-ft">
+      <button class="btn btn-outline" onclick="closeModal('modal-c')">Annuler</button>
+      <button class="btn btn-gold" onclick="addC()">Ajouter</button>
+    </div>
+  </div>
+</div>
+
+<!-- ========== GUIDE D'AIDE INTERACTIF ========== -->
+<div class="overlay" id="modal-help" style="align-items:flex-start;padding:0;">
+  <div style="background:#fff;width:100%;max-width:780px;height:100vh;overflow-y:auto;margin-left:auto;box-shadow:-8px 0 40px rgba(15,23,42,0.15);display:flex;flex-direction:column;">
+    <!-- Header -->
+    <div style="background:linear-gradient(135deg,var(--b700),var(--b500));padding:2rem 2rem 1.5rem;position:sticky;top:0;z-index:10;">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;">
+        <div>
+          <div style="font-family:var(--font-serif);font-size:1.6rem;font-weight:700;color:#fff;margin-bottom:4px;">Guide MaquisPro</div>
+          <div style="font-size:0.82rem;color:rgba(255,255,255,0.7);">Formation complète — du démarrage à la maîtrise</div>
+        </div>
+        <button onclick="closeModal('modal-help')" style="background:rgba(255,255,255,0.15);border:none;color:#fff;width:32px;height:32px;border-radius:8px;font-size:1.2rem;cursor:pointer;display:flex;align-items:center;justify-content:center;">×</button>
+      </div>
+      <!-- Chapter tabs -->
+      <div style="display:flex;gap:6px;margin-top:1.25rem;flex-wrap:wrap;" id="help-tabs"></div>
+    </div>
+    <!-- Content -->
+    <div style="padding:2rem;flex:1;" id="help-content"></div>
+    <!-- Footer nav -->
+    <div style="padding:1rem 2rem;border-top:1px solid var(--n100);display:flex;justify-content:space-between;align-items:center;background:#fff;position:sticky;bottom:0;">
+      <button class="btn btn-outline" id="help-prev" onclick="helpNav(-1)">← Précédent</button>
+      <span style="font-size:0.78rem;color:var(--ink3)" id="help-counter"></span>
+      <button class="btn btn-gold" id="help-next" onclick="helpNav(1)">Suivant →</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal clôture journée -->
+<div class="overlay" id="modal-cloture">
+  <div class="modal" style="max-width:460px">
+    <div class="modal-hd">
+      <h3 style="color:var(--ruby)">🔒 Clôturer la journée</h3>
+      <button class="modal-x" onclick="closeModal('modal-cloture')">×</button>
+    </div>
+    <div class="modal-body">
+      <div id="cloture-recap"></div>
+      <div style="background:var(--ruby-l);border:1px solid rgba(220,38,38,0.2);border-radius:var(--r);padding:0.85rem 1rem;margin-top:1rem;font-size:0.82rem;color:var(--ruby);">
+        <strong>⚠ Action irréversible :</strong> La clôture sauvegarde le rapport de la journée, remet les compteurs à zéro et archive toutes les ventes.
+      </div>
+      <div class="fg" style="margin-top:1rem">
+        <label>Nom de la caissière clôturant</label>
+        <input type="text" id="cloture-caissiere" readonly style="background:var(--n50)">
+      </div>
+    </div>
+    <div class="modal-ft">
+      <button class="btn btn-outline" onclick="closeModal('modal-cloture')">Annuler</button>
+      <button class="btn" style="background:var(--ruby);color:#fff" onclick="confirmerCloture()">Confirmer la clôture ✓</button>
+    </div>
+  </div>
+</div>
+
+<div class="toasts" id="toasts"></div>
+
+<!-- Modal modifier caissière -->
+<div class="overlay" id="modal-edit-c">
+  <div class="modal" style="max-width:400px">
+    <div class="modal-hd"><h3>Modifier la caissière</h3><button class="modal-x" onclick="closeModal('modal-edit-c')">×</button></div>
+    <div class="modal-body">
+      <input type="hidden" id="ec-id">
+      <div class="fgrid">
+        <div class="fg"><label>Prénom et nom</label><input type="text" id="ec-nom" placeholder="Nom complet"></div>
+        <div class="fg"><label>Nouveau PIN (4 chiffres)</label><input type="text" id="ec-pin" placeholder="Laisser vide = inchangé" maxlength="4"></div>
+        <div class="fg"><label>Rôle</label>
+          <select id="ec-role"><option value="Caissière">Caissière</option><option value="Admin">Admin</option></select>
+        </div>
+      </div>
+      <div style="background:var(--b50);border:1px solid var(--b100);border-radius:var(--r);padding:0.7rem;font-size:0.78rem;color:var(--ink3);margin-top:0.5rem">
+        💡 Laissez le champ PIN vide pour conserver le code actuel.
+      </div>
+    </div>
+    <div class="modal-ft">
+      <button class="btn btn-outline" onclick="closeModal('modal-edit-c')">Annuler</button>
+      <button class="btn btn-gold" onclick="saveEditC()">Enregistrer</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal modifier serveuse -->
+<div class="overlay" id="modal-edit-sv">
+  <div class="modal" style="max-width:380px">
+    <div class="modal-hd"><h3>Modifier la serveuse</h3><button class="modal-x" onclick="closeModal('modal-edit-sv')">×</button></div>
+    <div class="modal-body">
+      <input type="hidden" id="esv-id">
+      <div class="fgrid">
+        <div class="fg"><label>Prénom et nom</label><input type="text" id="esv-nom" placeholder="Nom complet"></div>
+        <div class="fg"><label>Couleur</label>
+          <select id="esv-color">
+            <option value="#6A3D9B">Violet</option>
+            <option value="#B07D2A">Doré</option>
+            <option value="#1A5C3A">Vert</option>
+            <option value="#1A3A6B">Bleu marine</option>
+            <option value="#8B1A1A">Rouge</option>
+            <option value="#1E5F8C">Bleu ciel</option>
+            <option value="#2D6A4F">Émeraude</option>
+          </select>
+        </div>
+      </div>
+    </div>
+    <div class="modal-ft">
+      <button class="btn btn-outline" onclick="closeModal('modal-edit-sv')">Annuler</button>
+      <button class="btn btn-gold" onclick="saveEditSv()">Enregistrer</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal réappro stock -->
+<div class="overlay" id="modal-restock">
+  <div class="modal" style="max-width:360px">
+    <div class="modal-hd"><h3>Réapprovisionner</h3><button class="modal-x" onclick="closeModal('modal-restock')">×</button></div>
+    <div class="modal-body">
+      <input type="hidden" id="rst-id">
+      <div id="rst-info" style="background:var(--b50);border:1px solid var(--b100);border-radius:var(--r);padding:0.75rem;margin-bottom:1rem;font-size:0.85rem;"></div>
+      <div class="fg">
+        <label>Quantité à ajouter</label>
+        <input type="number" id="rst-qty" placeholder="ex : 24" min="1" value="24">
+      </div>
+    </div>
+    <div class="modal-ft">
+      <button class="btn btn-outline" onclick="closeModal('modal-restock')">Annuler</button>
+      <button class="btn btn-success" onclick="confirmRestock()">Ajouter au stock ✓</button>
+    </div>
+  </div>
+</div>
+
+<script>
+/* ==================== DATA ==================== */
+/* ==================== FIREBASE LAYER ==================== */
+let FBDB = null;  // Firebase Realtime Database reference
+let APP_MODE = 'demo'; // 'demo' or 'firebase'
+
+// ---- Setup screen logic ----
+function setMode(mode) {
+  APP_MODE = mode;
+  document.getElementById('btn-mode-demo').style.background = mode==='demo' ? 'rgba(59,130,246,0.3)' : 'transparent';
+  document.getElementById('btn-mode-demo').style.color = mode==='demo' ? '#fff' : '#94A3B8';
+  document.getElementById('btn-mode-firebase').style.background = mode==='firebase' ? 'rgba(249,115,22,0.3)' : 'transparent';
+  document.getElementById('btn-mode-firebase').style.color = mode==='firebase' ? '#fff' : '#94A3B8';
+  document.getElementById('panel-demo').style.display = mode==='demo' ? '' : 'none';
+  document.getElementById('panel-firebase').style.display = mode==='firebase' ? '' : 'none';
+}
+
+function startDemo() {
+  APP_MODE = 'demo';
+  document.getElementById('firebase-setup-screen').style.display = 'none';
+  document.getElementById('login-screen').style.display = 'flex';
+  populateSel();
+}
+
+function startFirebase() {
+  const apiKey      = document.getElementById('fb-apiKey').value.trim();
+  const authDomain  = document.getElementById('fb-authDomain').value.trim();
+  const databaseURL = document.getElementById('fb-databaseURL').value.trim();
+  const projectId   = document.getElementById('fb-projectId').value.trim();
+
+  if(!apiKey || !databaseURL || !projectId) {
+    document.getElementById('fb-status').innerHTML = '<span style="color:#F87171">⚠ Remplissez au minimum : API Key, Database URL et Project ID</span>';
+    return;
+  }
+
+  const fbStatus = document.getElementById('fb-status');
+  fbStatus.innerHTML = '<span style="color:#93C5FD">⏳ Connexion à Firebase…</span>';
+
+  try {
+    const firebaseConfig = { apiKey, authDomain, databaseURL, projectId };
+
+    // Init Firebase (avoid duplicate)
+    if (!firebase.apps.length) {
+      firebase.initializeApp(firebaseConfig);
+    }
+    FBDB = firebase.database();
+
+    // Save config if requested
+    if (document.getElementById('fb-remember').checked) {
+      localStorage.setItem('maquis_fb_config', JSON.stringify(firebaseConfig));
+    }
+
+    // Test connection by reading root
+    FBDB.ref('/').once('value').then(() => {
+      fbStatus.innerHTML = '<span style="color:#6EE7B7">✅ Firebase connecté avec succès !</span>';
+      fbStatus.innerHTML = '<span style="color:#6EE7B7">✅ Firebase connecté ! Chargement…</span>';
+      // Cacher l'écran setup
+      document.getElementById('firebase-setup-screen').style.display = 'none';
+      document.getElementById('login-screen').style.display = 'flex';
+      // Initialiser Firebase sync (charge ou crée les données)
+      initFirebaseSync();
+      // Charger immédiatement les caissières pour l'écran de login
+      FBDB.ref('caissières').once('value').then(snap => {
+        const val = snap.val();
+        if(val) DB.caissières = Object.values(val);
+        populateSel();
+      }).catch(() => populateSel());
+    }).catch(err => {
+      fbStatus.innerHTML = '<span style="color:#F87171">❌ Erreur : ' + err.message + '</span>';
+    });
+  } catch(err) {
+    fbStatus.innerHTML = '<span style="color:#F87171">❌ ' + err.message + '</span>';
+  }
+}
+
+// ---- Firebase sync engine ----
+function initFirebaseSync() {
+  if(!FBDB) return;
+
+  // Vérifier si Firebase est vide — si oui, pousser les données initiales
+  FBDB.ref('/').once('value').then(snap => {
+    const existing = snap.val();
+
+    // Si pas de caissières dans Firebase → initialiser avec les données par défaut
+    if(!existing || !existing['caissières']) {
+      const fbStatus = document.getElementById('fb-status');
+      if(fbStatus) fbStatus.innerHTML = '<span style="color:#93C5FD">⏳ Initialisation de la base de données…</span>';
+
+      const initPromises = [];
+
+      // Pousser caissières
+      const caissiersObj = {};
+      DB.caissières.forEach(c => { caissiersObj[c.id] = c; });
+      initPromises.push(FBDB.ref('caissières').set(caissiersObj));
+
+      // Pousser stock
+      const stockObj = {};
+      DB.stock.forEach(s => { stockObj[s.id] = s; });
+      initPromises.push(FBDB.ref('stock').set(stockObj));
+
+      // Pousser serveuses
+      const svObj = {};
+      DB.serveuses.forEach(s => { svObj[s.id] = s; });
+      initPromises.push(FBDB.ref('serveuses').set(svObj));
+
+      // Pousser catégories
+      initPromises.push(FBDB.ref('categories').set(DB.categories));
+
+      Promise.all(initPromises).then(() => {
+        if(fbStatus) fbStatus.innerHTML = '<span style="color:#6EE7B7">✅ Base initialisée !</span>';
+        // Maintenant écouter en temps réel
+        startListening();
+      }).catch(err => {
+        if(fbStatus) fbStatus.innerHTML = '<span style="color:#F87171">❌ Erreur init : ' + err.message + '</span>';
+        // Quand même démarrer l'écoute
+        startListening();
+      });
+    } else {
+      // Données déjà dans Firebase — écouter directement
+      startListening();
+    }
+  }).catch(() => {
+    // En cas d'erreur, écouter quand même
+    startListening();
+  });
+}
+
+function startListening() {
+  if(!FBDB) return;
+  const collections = ['ventes','stock','serveuses','caissières','categories','clotures','logs','historique'];
+  collections.forEach(col => {
+    FBDB.ref(col).on('value', snap => {
+      const val = snap.val();
+      if(!val) return; // Ne pas écraser avec tableau vide
+      if(col === 'categories') {
+        DB.categories = Array.isArray(val) ? val : Object.values(val);
+      } else {
+        DB[col] = Object.values(val);
+      }
+      // Rafraîchir sélecteurs caissières si nécessaire
+      if(col === 'caissières') populateSel();
+      // Refresh page actuelle
+      refreshCurrentPage();
+    });
+  });
+}
+
+function refreshCurrentPage() {
+  const active = document.querySelector('.main.on');
+  if(!active) return;
+  const page = active.id.replace('page-','');
+  if(page==='vente')     { renderMenuGrid('tous'); renderMenuCats(); }
+  if(page==='historique'){ renderHist(); }
+  if(page==='impayes')   { renderImpayes(); }
+  if(page==='rapport')   { renderRapport(); }
+  if(page==='stock')     { renderStock('tous'); }
+  if(page==='serveuses') { renderSv(); }
+  if(page==='clotures')  { renderClotures(); }
+  if(page==='admin')     { renderAdmin(); }
+  renderStockBadge(); renderImpBadge(); renderClotureBadge();
+}
+
+// ---- Firebase write helpers ----
+function fbSet(collection, key, data) {
+  if(APP_MODE !== 'firebase' || !FBDB) return Promise.resolve();
+  return FBDB.ref(collection + '/' + key).set(data);
+}
+
+function fbPush(collection, data) {
+  if(APP_MODE !== 'firebase' || !FBDB) return Promise.resolve();
+  return FBDB.ref(collection).push(data);
+}
+
+function fbRemove(collection, key) {
+  if(APP_MODE !== 'firebase' || !FBDB) return Promise.resolve();
+  return FBDB.ref(collection + '/' + key).remove();
+}
+
+function fbSetAll(collection, arrayData) {
+  if(APP_MODE !== 'firebase' || !FBDB) return Promise.resolve();
+  const obj = {};
+  arrayData.forEach((item, i) => { obj[item.id || i] = item; });
+  return FBDB.ref(collection).set(obj);
+}
+
+function fbSetArray(collection, arr) {
+  if(APP_MODE !== 'firebase' || !FBDB) return Promise.resolve();
+  return FBDB.ref(collection).set(arr);
+}
+
+// ---- Connectivity indicator ----
+function initConnectivityIndicator() {
+  if(APP_MODE !== 'firebase' || !FBDB) return;
+  FBDB.ref('.info/connected').on('value', snap => {
+    const online = snap.val();
+    const ind = document.getElementById('conn-indicator');
+    if(ind) {
+      ind.textContent = online ? '🟢 En ligne' : '🔴 Hors ligne';
+      ind.style.color = online ? '#6EE7B7' : '#F87171';
+    }
+  });
+}
+
+// ---- Auto-load saved Firebase config ----
+window.addEventListener('DOMContentLoaded', () => {
+  const saved = localStorage.getItem('maquis_fb_config');
+  if(saved) {
+    try {
+      const cfg = JSON.parse(saved);
+      document.getElementById('fb-apiKey').value    = cfg.apiKey || '';
+      document.getElementById('fb-authDomain').value = cfg.authDomain || '';
+      document.getElementById('fb-databaseURL').value = cfg.databaseURL || '';
+      document.getElementById('fb-projectId').value  = cfg.projectId || '';
+      document.getElementById('fb-remember').checked = true;
+    } catch(e) {}
+  }
+});
+
+/* ==================== DATA ==================== */
+const DB = {
+  caissières:[
+    {id:1,nom:'Awa Koné',    pin:'1234',role:'Caissière',color:'#B07D2A',initials:'AK'},
+    {id:2,nom:'Fatou Diallo',pin:'2222',role:'Caissière',color:'#1A5C3A',initials:'FD'},
+    {id:3,nom:'Marie Yao',   pin:'3333',role:'Caissière',color:'#1A3A6B',initials:'MY'},
+    {id:4,nom:'Patron',      pin:'0000',role:'Admin',    color:'#8B1A1A',initials:'PA'},
+  ],
+  serveuses:[
+    {id:1,nom:'Bintou Camara',color:'#6A3D9B',initials:'BC'},
+    {id:2,nom:'Adjoua Soro',  color:'#B07D2A',initials:'AS'},
+    {id:3,nom:'Nathalie Brou',color:'#1A3A6B',initials:'NB'},
+    {id:4,nom:'Rosine Yao',   color:'#1A5C3A',initials:'RY'},
+  ],
+  categories:['Bières','Spiritueux','Boissons','Nourriture','Autre'],
+  stock:[
+    {id:1, nom:'Bière Flag 65cl',   cat:'Bières',    emoji:'🍺',qty:48,min:20,unit:'bouteilles',prix:800, prixAchat:500},
+    {id:2, nom:'Bière Heineken',    cat:'Bières',    emoji:'🍻',qty:12,min:15,unit:'bouteilles',prix:700, prixAchat:450},
+    {id:3, nom:'Bière Guilele',     cat:'Bières',    emoji:'🍺',qty:36,min:15,unit:'bouteilles',prix:600, prixAchat:380},
+    {id:4, nom:'Fanta Orange',      cat:'Boissons',  emoji:'🍊',qty:30,min:10,unit:'bouteilles',prix:400, prixAchat:250},
+    {id:5, nom:'Coca-Cola',         cat:'Boissons',  emoji:'🥤',qty:22,min:10,unit:'bouteilles',prix:400, prixAchat:250},
+    {id:6, nom:'Eau minérale 1.5L', cat:'Boissons',  emoji:'💧',qty:50,min:15,unit:'bouteilles',prix:300, prixAchat:150},
+    {id:7, nom:'Akpeteshie 25cl',   cat:'Spiritueux',emoji:'🥃',qty:8, min:5, unit:'bouteilles',prix:600, prixAchat:350},
+    {id:8, nom:'Whisky JB 25cl',    cat:'Spiritueux',emoji:'🥃',qty:4, min:5, unit:'bouteilles',prix:2500,prixAchat:1500},
+    {id:9, nom:'Attiéké + poisson', cat:'Nourriture',emoji:'🐟',qty:3, min:5, unit:'portions',  prix:1500,prixAchat:800},
+    {id:10,nom:'Alloco + poulet',   cat:'Nourriture',emoji:'🍗',qty:10,min:5, unit:'portions',  prix:2000,prixAchat:1100},
+    {id:11,nom:'Riz + sauce',       cat:'Nourriture',emoji:'🍚',qty:15,min:5, unit:'portions',  prix:1200,prixAchat:600},
+  ],
+  ventes:[],
+  historique:[],  // toutes les ventes de toutes les journées (jamais effacées)
+  logs:[],
+  clotures:[],
+  user:null,
+};
+
+const APP = { logo: null };
+
+/* ==================== PAID TOGGLE ==================== */
+let isSoldee = true;
+function setPaid(paid){
+  isSoldee = paid;
+  const bp = document.getElementById('toggle-paid');
+  const bu = document.getElementById('toggle-unpaid');
+  const benc = document.getElementById('btn-enc');
+  if(paid){
+    bp.classList.add('on-paid'); bp.classList.remove('on-unpaid');
+    bu.classList.remove('on-paid'); bu.classList.remove('on-unpaid');
+    benc.textContent='Encaisser →';
+    benc.className='btn btn-gold';benc.style.flex='1';
+  } else {
+    bu.classList.add('on-unpaid'); bu.classList.remove('on-paid');
+    bp.classList.remove('on-paid'); bp.classList.remove('on-unpaid');
+    benc.textContent='Mettre en impayé →';
+    benc.className='btn btn-danger';benc.style.flex='1';
+  }
+}
+
+/* ==================== IMPAYES ==================== */
+let soldeCurrent = null; // vente en cours de solde
+
+function renderImpBadge(){
+  const n = DB.ventes.filter(v=>v.statut==='Impayé').length;
+  const el = document.getElementById('badge-imp');
+  if(el){el.textContent=n;el.style.display=n?'':'none';}
+}
+
+function renderImpayes(){
+  const svF = document.getElementById('imp-filter-sv')?.value||'';
+  let data = DB.ventes.filter(v=>v.statut==='Impayé');
+  if(svF) data = data.filter(v=>v.serveuse===svF);
+
+  const total = data.reduce((s,v)=>s+v.total,0);
+  document.getElementById('imp-stats').innerHTML=`
+    <div class="imp-stat">
+      <div class="imp-stat-l">Factures impayées</div>
+      <div class="imp-stat-v">${data.length}</div>
+    </div>
+    <div class="imp-stat">
+      <div class="imp-stat-l">Montant total dû</div>
+      <div class="imp-stat-v">${total.toLocaleString()} <span style="font-size:1rem">FCFA</span></div>
+    </div>`;
+
+  document.getElementById('imp-print-hd').innerHTML=makePrintHd('Factures impayées',`${data.length} facture(s) · ${total.toLocaleString()} FCFA dus`);
+
+  if(!data.length){
+    document.getElementById('imp-grid').innerHTML=`
+      <div class="imp-empty" style="grid-column:1/-1">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M22 11.08V12a10 10 0 11-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+        Aucune facture impayée — tout est en ordre !
+      </div>`;
+    return;
+  }
+
+  document.getElementById('imp-grid').innerHTML = data.map(v=>{
+    const sv = DB.serveuses.find(s=>s.id==v.serveuseId);
+    const svColor = sv?.color||'#888';
+    const svInit = sv?.initials||'?';
+    return `<div class="imp-card">
+      <div class="imp-card-hd">
+        <div>
+          <div style="display:flex;align-items:center;gap:8px;margin-bottom:5px">
+            <strong style="font-size:0.9rem">${v.id}</strong>
+            <span style="font-size:0.72rem;color:var(--ink3)">${v.heure} · ${v.caissiere}</span>
+          </div>
+          <div class="imp-sv-badge">
+            <div class="imp-sv-av" style="background:${svColor}">${svInit}</div>
+            <span class="imp-sv-nm">${v.serveuse||'—'}</span>
+          </div>
+        </div>
+        <div class="imp-amount">${v.total.toLocaleString()} <span style="font-size:1rem;color:var(--ink3)">FCFA</span></div>
+      </div>
+      <div class="imp-items">
+        ${v.items.map(i=>`<div class="imp-items-row"><span>${i.emoji} ${i.nom} ×${i.qty}</span><span>${(i.prix*i.qty).toLocaleString()} F</span></div>`).join('')}
+      </div>
+      <div style="display:flex;gap:0.5rem;" class="no-print">
+        <button class="btn btn-print btn-sm" onclick="imprimerFacture('${v.id}')">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:13px;height:13px"><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 01-2-2v-5a2 2 0 012-2h16a2 2 0 012 2v5a2 2 0 01-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg>
+          Facture
+        </button>
+        <button class="btn btn-gold" style="flex:1" onclick="ouvrirSolde('${v.id}')">
+          Solder la facture →
+        </button>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function ouvrirSolde(id){
+  const v = DB.ventes.find(x=>x.id===id);
+  if(!v) return;
+  soldeCurrent = v;
+  document.getElementById('solde-recap').innerHTML=`
+    <div class="receipt">
+      <div class="rec-title">${nomMaquis()}</div>
+      <hr class="rec-div">
+      <div class="rec-row"><span>Facture</span><span><strong>${v.id}</strong></span></div>
+      <div class="rec-row"><span>Serveuse</span><span><strong>${v.serveuse||'—'}</strong></span></div>
+      <div class="rec-row"><span>Créée le</span><span>${v.heure}</span></div>
+      <hr class="rec-div">
+      ${v.items.map(i=>`<div class="rec-row"><span>${i.emoji} ${i.nom} ×${i.qty}</span><span>${(i.prix*i.qty).toLocaleString()} F</span></div>`).join('')}
+      <hr class="rec-div">
+      <div class="rec-row rec-total"><span>TOTAL DÛ</span><span>${v.total.toLocaleString()} FCFA</span></div>
+    </div>`;
+  document.getElementById('solde-recu').value='';
+  document.getElementById('solde-monnaie').textContent='— FCFA';
+  openModal('modal-solde');
+}
+
+function calcSoldeMonnaie(){
+  if(!soldeCurrent) return;
+  const recu = parseFloat(document.getElementById('solde-recu').value)||0;
+  const m = recu - soldeCurrent.total;
+  document.getElementById('solde-monnaie').textContent = m>=0 ? m.toLocaleString()+' FCFA' : '— FCFA';
+}
+
+function confirmerSolde(){
+  if(!soldeCurrent) return;
+  const mode = document.getElementById('solde-mode').value;
+  soldeCurrent.statut = 'Payé';
+  soldeCurrent.modeSolde = mode;
+  soldeCurrent.heureSolde = tNow();
+  soldeCurrent.soldePar = DB.user?.nom||'';
+  fbSet('ventes', soldeCurrent.id, soldeCurrent);
+  // Sync dans historique aussi
+  const hiIdx=DB.historique.findIndex(x=>x.id===soldeCurrent.id);
+  if(hiIdx>=0){DB.historique[hiIdx]=soldeCurrent;fbSet('historique',soldeCurrent.id,soldeCurrent);}
+  showRecu(soldeCurrent);
+  closeModal('modal-solde');
+  renderImpayes(); renderHist(); renderRapport(); renderImpBadge();
+  toast(`Facture ${soldeCurrent.id} soldée ✓ — comptabilisée`,'ok');
+  soldeCurrent = null;
+}
+
+function imprimerFacture(id){
+  const v = DB.ventes.find(x=>x.id===id);
+  if(!v) return;
+  document.getElementById('recu-body').innerHTML=`
+    <div class="receipt">
+      <div class="rec-title">${nomMaquis()}</div>
+      <div class="rec-sub">${document.getElementById('p-ville')?.value||''} · ${document.getElementById('p-tel')?.value||''}</div>
+      <hr class="rec-div">
+      <div style="text-align:center;background:var(--ruby-l);border-radius:6px;padding:4px 0;margin-bottom:6px;font-weight:700;color:var(--ruby);font-size:0.78rem;">⚠ FACTURE IMPAYÉE</div>
+      <div class="rec-row"><span>N° facture</span><span><strong>${v.id}</strong></span></div>
+      <div class="rec-row"><span>Date</span><span>${new Date().toLocaleDateString('fr-FR')}</span></div>
+      <div class="rec-row"><span>Heure</span><span>${v.heure}</span></div>
+      <div class="rec-row"><span>Serveuse</span><span><strong>${v.serveuse||'—'}</strong></span></div>
+      <div class="rec-row"><span>Caissière</span><span>${v.caissiere}</span></div>
+      <hr class="rec-div">
+      ${v.items.map(i=>`<div class="rec-row"><span>${i.emoji} ${i.nom} ×${i.qty}</span><span>${(i.prix*i.qty).toLocaleString()} F</span></div>`).join('')}
+      <hr class="rec-div">
+      <div class="rec-row rec-total"><span>TOTAL DÛ</span><span>${v.total.toLocaleString()} FCFA</span></div>
+      <hr class="rec-div">
+      <div class="rec-footer">À régler auprès de la caisse</div>
+    </div>`;
+  openModal('modal-recu');
+}
+
+/* ==================== LOGIN ==================== */
+let pinBuf='';
+function populateSel(){
+  const s=document.getElementById('login-select');
+  if(!s) return;
+  const currentVal = s.value; // garder la sélection actuelle
+  s.innerHTML='<option value="">— Sélectionnez votre nom —</option>';
+  DB.caissières.forEach(c=>{
+    const o=document.createElement('option');
+    o.value=c.id;
+    o.textContent=c.nom+(c.role==='Admin'?' ★ Admin':'');
+    s.appendChild(o);
+  });
+  if(currentVal) s.value=currentVal; // restaurer
+}
+function pk(k){
+  document.getElementById('pin-err').textContent='';
+  if(k==='del'){pinBuf=pinBuf.slice(0,-1);}
+  else if(k==='ok'){doLogin();return;}
+  else{if(pinBuf.length>=4)return;pinBuf+=k;if(pinBuf.length===4){setTimeout(doLogin,180);return;}}
+  updDots();
+}
+function updDots(){for(let i=0;i<4;i++)document.getElementById('pd'+i).classList.toggle('on',i<pinBuf.length);}
+function doLogin(){
+  const v=document.getElementById('login-select').value;
+  if(!v){document.getElementById('pin-err').textContent='Sélectionnez votre nom.';pinBuf='';updDots();return;}
+  // En mode Firebase, recharger les caissières depuis Firebase avant de vérifier
+  if(APP_MODE==='firebase' && FBDB){
+    FBDB.ref('caissières').once('value').then(snap=>{
+      const val=snap.val();
+      if(val) DB.caissières=Object.values(val);
+      populateSel();
+      _doLoginCheck(v);
+    }).catch(()=>_doLoginCheck(v));
+  } else {
+    _doLoginCheck(v);
+  }
+}
+function _doLoginCheck(v){
+  const c=DB.caissières.find(x=>x.id==v);
+  if(!c){document.getElementById('pin-err').textContent='Caissière introuvable. Réessayez.';pinBuf='';updDots();return;}
+  if(pinBuf!==c.pin){document.getElementById('pin-err').textContent='Code PIN incorrect. Réessayez.';pinBuf='';updDots();return;}
+  DB.user=c;pinBuf='';updDots();
+  document.getElementById('login-screen').style.display='none';
+  document.getElementById('app-screen').style.display='block';
+  document.getElementById('tb-name').textContent=c.nom;
+  document.getElementById('tb-role').textContent=c.role;
+  document.getElementById('tb-av').textContent=c.initials;
+  document.getElementById('tb-av').style.background=c.color;
+  document.getElementById('vente-sub').textContent=`Session de ${c.nom}`;
+  refreshSvLists();renderMenuCats();renderMenuGrid('tous');renderStockBadge();
+  renderImpBadge();
+  // Show connectivity indicator for Firebase mode
+  const connInd = document.getElementById('conn-indicator');
+  const syncInd = document.getElementById('sync-indicator');
+  if(APP_MODE==='firebase'){
+    if(connInd) connInd.style.display='block';
+    if(syncInd) syncInd.style.display='flex';
+    initConnectivityIndicator();
+  }
+  // Show mode badge
+  const modeBadge=document.getElementById('tb-mode-badge');
+  if(modeBadge){
+    modeBadge.style.display='block';
+    modeBadge.textContent=APP_MODE==='firebase'?'🔥 Temps réel':'📴 Local';
+  }
+  // Show admin nav only for Admin
+  const isA = c.role==='Admin';
+  document.getElementById('sb-admin-section').style.display = isA ? '' : 'none';
+  document.getElementById('sb-admin-item').style.display = isA ? '' : 'none';
+  document.getElementById('sb-inventaire-item').style.display = isA ? '' : 'none';
+  renderClotureBadge();
+  goTo('vente');
+  toast(`Bienvenue, ${c.nom} !`,'ok');
+}
+function logout(){
+  DB.user=null;
+  document.getElementById('app-screen').style.display='none';
+  document.getElementById('login-screen').style.display='flex';
+  document.getElementById('login-select').value='';
+  pinBuf='';updDots();document.getElementById('pin-err').textContent='';
+}
+
+/* ==================== NAV ==================== */
+function goTo(p){
+  document.querySelectorAll('.main').forEach(e=>e.classList.remove('on'));
+  document.querySelectorAll('.sb-item').forEach(e=>e.classList.remove('on'));
+  document.getElementById('page-'+p).classList.add('on');
+  document.querySelectorAll('.sb-item').forEach(e=>{
+    if(e.getAttribute('onclick')&&e.getAttribute('onclick').includes("'"+p+"'"))e.classList.add('on');
+  });
+  if(p==='historique')renderHist();
+  if(p==='impayes'){renderImpayes();}
+  if(p==='serveuses')renderSv();
+  if(p==='stock'){renderStockPage();renderStock('tous');}
+  if(p==='rapport')renderRapport();
+  if(p==='clotures')renderClotures();
+  if(p==='inventaire'){if(DB.user?.role!=='Admin'){toast('Accès réservé au Patron','err');return;}renderInventaire();}
+  if(p==='admin'){if(DB.user?.role!=='Admin'){toast('Accès réservé au Patron','err');return;}renderAdmin();}
+}
+
+/* ==================== MENU ==================== */
+function renderMenuCats(){
+  const cats=['tous',...new Set(DB.stock.map(s=>s.cat))];
+  document.getElementById('cat-strip').innerHTML=cats.map(c=>
+    `<button class="cat-pill${c==='tous'?' on':''}" onclick="filterCat('${c}',this)">${c==='tous'?'Tous':c}</button>`
+  ).join('');
+}
+function filterCat(cat,btn){
+  document.querySelectorAll('.cat-strip .cat-pill').forEach(b=>b.classList.remove('on'));
+  btn.classList.add('on');renderMenuGrid(cat);
+}
+function renderMenuGrid(cat){
+  const items=cat==='tous'?DB.stock:DB.stock.filter(s=>s.cat===cat);
+  document.getElementById('menu-grid').innerHTML=items.map(s=>
+    `<div class="menu-item" onclick="addPan(${s.id})">
+      <div class="mi-img-wrap">
+        ${s.logo
+          ? `<img src="${s.logo}" class="mi-logo" alt="${s.nom}">`
+          : `<span class="mi-em">${s.emoji}</span>`}
+      </div>
+      <div class="mi-cat">${s.cat}</div>
+      <div class="mi-name">${s.nom}</div>
+      <div class="mi-price">${s.prix.toLocaleString()} FCFA</div>
+    </div>`
+  ).join('');
+}
+
+/* ==================== PANIER ==================== */
+let panier=[];
+function addPan(id){
+  const s=DB.stock.find(x=>x.id===id);if(!s)return;
+  const ex=panier.find(x=>x.id===id);
+  if(ex)ex.qty++;else panier.push({id:s.id,nom:s.nom,emoji:s.emoji,prix:s.prix,qty:1});
+  renderPan();
+}
+function renderPan(){
+  const el=document.getElementById('pan-items');
+  if(!panier.length){
+    el.innerHTML=`<div class="pan-empty"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M6 2L3 6v14a2 2 0 002 2h14a2 2 0 002-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/><path d="M16 10a4 4 0 01-8 0"/></svg>Sélectionnez des produits</div>`;
+  } else {
+    el.innerHTML=panier.map((it,i)=>
+      `<div class="pan-item">
+        <span class="pi-name">${it.emoji} ${it.nom}</span>
+        <div class="pi-ctrl">
+          <button class="qb" onclick="chgQty(${i},-1)">−</button>
+          <span class="pi-num">${it.qty}</span>
+          <button class="qb" onclick="chgQty(${i},1)">+</button>
+        </div>
+        <span class="pi-amt">${(it.prix*it.qty).toLocaleString()}</span>
+      </div>`
+    ).join('');
+  }
+  const tot=panier.reduce((s,i)=>s+i.prix*i.qty,0);
+  document.getElementById('pan-total').textContent=tot.toLocaleString()+' FCFA';
+  document.getElementById('badge-vente').textContent=panier.reduce((s,i)=>s+i.qty,0);
+}
+function chgQty(i,d){panier[i].qty+=d;if(panier[i].qty<=0)panier.splice(i,1);renderPan();}
+function clearPan(){panier=[];renderPan();}
+
+/* ==================== ENCAISSEMENT ==================== */
+function openEnc(){
+  if(!panier.length){toast('Le panier est vide','err');return;}
+  const tot=panier.reduce((s,i)=>s+i.prix*i.qty,0);
+  const sv=document.getElementById('pan-sv').value;
+  const svNom=sv?DB.serveuses.find(x=>x.id==sv)?.nom:'— Vente directe —';
+  // Modal title & zones
+  document.getElementById('enc-modal-title').textContent = isSoldee ? 'Encaisser la vente' : 'Enregistrer comme impayée';
+  document.getElementById('enc-payment-zone').style.display = isSoldee ? '' : 'none';
+  document.getElementById('enc-unpaid-zone').style.display = isSoldee ? 'none' : '';
+  const btnC = document.getElementById('enc-confirm-btn');
+  if(isSoldee){btnC.textContent='Confirmer ✓';btnC.className='btn btn-gold btn-lg';}
+  else{btnC.textContent='Enregistrer impayé ✓';btnC.className='btn btn-danger btn-lg';}
+  document.getElementById('enc-recap').innerHTML=`
+    <div class="receipt">
+      <div class="rec-title">${nomMaquis()}</div>
+      <hr class="rec-div">
+      <div class="rec-row"><span>Caissière</span><span><strong>${DB.user.nom}</strong></span></div>
+      <div class="rec-row"><span>Serveuse</span><span>${svNom}</span></div>
+      <div class="rec-row"><span>Heure</span><span>${tNow()}</span></div>
+      <hr class="rec-div">
+      ${panier.map(i=>`<div class="rec-row"><span>${i.emoji} ${i.nom} ×${i.qty}</span><span>${(i.prix*i.qty).toLocaleString()} F</span></div>`).join('')}
+      <hr class="rec-div">
+      <div class="rec-row rec-total"><span>TOTAL</span><span>${tot.toLocaleString()} FCFA</span></div>
+    </div>`;
+  document.getElementById('enc-recu').value='';
+  document.getElementById('enc-monnaie').textContent='— FCFA';
+  openModal('modal-enc');
+}
+function calcMonnaie(){
+  const recu=parseFloat(document.getElementById('enc-recu').value)||0;
+  const tot=panier.reduce((s,i)=>s+i.prix*i.qty,0);
+  const m=recu-tot;
+  document.getElementById('enc-monnaie').textContent=m>=0?m.toLocaleString()+' FCFA':'— FCFA';
+}
+function confirmVente(){
+  const tot=panier.reduce((s,i)=>s+i.prix*i.qty,0);
+  const mode=isSoldee?document.getElementById('enc-mode').value:'—';
+  const svId=document.getElementById('pan-sv').value;
+  const svNom=svId?DB.serveuses.find(x=>x.id==svId)?.nom||'':'';
+  const statut=isSoldee?'Payé':'Impayé';
+  const id=(isSoldee?'V-':'IMP-')+String(DB.ventes.length+1).padStart(3,'0');
+  const items=panier.map(i=>({id:i.id,nom:i.nom,emoji:i.emoji,qty:i.qty,prix:i.prix}));
+  const newVente={id,heure:tNow(),caissiere:DB.user.nom,serveuseId:svId||null,serveuse:svNom,items,total:tot,mode,statut};
+  newVente.cloture = null; // sera rempli à la clôture
+  DB.ventes.push(newVente);
+  DB.historique.push(newVente);
+  fbPush('ventes', newVente);
+  fbPush('historique', newVente);
+  // Décrémenter stock dans tous les cas
+  items.forEach(i=>{const s=DB.stock.find(x=>x.id===i.id);if(s){s.qty=Math.max(0,s.qty-i.qty);fbSet('stock',s.id,s);}});
+  if(isSoldee){
+    showRecu(DB.ventes[DB.ventes.length-1]);
+    toast(`Vente ${id} encaissée ✓ — comptabilisée`,'ok');
+  } else {
+    imprimerFacture(id);
+    toast(`Facture impayée ${id} créée pour ${svNom||'—'}`,'ok');
+  }
+  clearPan();closeModal('modal-enc');renderStockBadge();renderImpBadge();
+  // reset toggle to paid
+  setPaid(true);
+}
+function showRecu(v){
+  document.getElementById('recu-body').innerHTML=`
+    <div class="receipt">
+      <div class="rec-title">${nomMaquis()}</div>
+      <div class="rec-sub">${document.getElementById('p-ville')?.value||''} · ${document.getElementById('p-tel')?.value||''}</div>
+      <hr class="rec-div">
+      <div class="rec-row"><span>N° vente</span><span><strong>${v.id}</strong></span></div>
+      <div class="rec-row"><span>Date</span><span>${new Date().toLocaleDateString('fr-FR')}</span></div>
+      <div class="rec-row"><span>Heure</span><span>${v.heure}</span></div>
+      <div class="rec-row"><span>Caissière</span><span>${v.caissiere}</span></div>
+      <div class="rec-row"><span>Serveuse</span><span>${v.serveuse||'— Directe —'}</span></div>
+      <hr class="rec-div">
+      ${v.items.map(i=>`<div class="rec-row"><span>${i.emoji} ${i.nom} ×${i.qty}</span><span>${(i.prix*i.qty).toLocaleString()} F</span></div>`).join('')}
+      <hr class="rec-div">
+      <div class="rec-row rec-total"><span>TOTAL</span><span>${v.total.toLocaleString()} FCFA</span></div>
+      <div class="rec-row"><span>Paiement</span><span>${v.mode}</span></div>
+      <hr class="rec-div">
+      <div class="rec-footer">Merci de votre visite — ${nomMaquis()}</div>
+    </div>`;
+  openModal('modal-recu');
+}
+
+/* ==================== HISTORIQUE ==================== */
+function renderHist(){
+  const svF   = document.getElementById('hist-sv')?.value||'';
+  const stF   = document.getElementById('hist-st')?.value||'';
+  const cloF  = document.getElementById('hist-cloture')?.value||'today';
+
+  // Populate clôture filter options dynamically
+  const clotSel = document.getElementById('hist-cloture');
+  if(clotSel){
+    const currentOpts = ['today','all',...DB.clotures.map(cl=>cl.id)];
+    if(clotSel.options.length !== currentOpts.length){
+      clotSel.innerHTML = `<option value="today">Journée en cours</option>
+        <option value="all">Tout l'historique</option>
+        ${DB.clotures.map(cl=>`<option value="${cl.id}">${cl.date} (${cl.id})</option>`).join('')}`;
+    }
+  }
+
+  // Source de données selon le filtre
+  let data;
+  if(cloF === 'today'){
+    data = [...DB.ventes].reverse();
+  } else if(cloF === 'all'){
+    data = [...DB.historique].reverse();
+  } else {
+    data = [...DB.historique].filter(v=>v.cloture===cloF).reverse();
+  }
+
+  if(svF) data = data.filter(v=>v.serveuse===svF);
+  if(stF) data = data.filter(v=>v.statut===stF);
+
+  // Stats banner
+  const total = data.filter(v=>v.statut==='Payé').reduce((s,v)=>s+v.total,0);
+  const statsEl = document.getElementById('hist-stats-banner');
+  if(statsEl) statsEl.innerHTML=`
+    <div class="stat">
+      <div class="stat-accent" style="background:var(--b500)"></div>
+      <div class="stat-lbl">Transactions affichées</div>
+      <div class="stat-val">${data.length}</div>
+    </div>
+    <div class="stat">
+      <div class="stat-accent" style="background:var(--emerald)"></div>
+      <div class="stat-lbl">Total encaissé</div>
+      <div class="stat-val">${total.toLocaleString()}</div>
+      <div class="stat-sub">FCFA payées</div>
+    </div>
+    <div class="stat">
+      <div class="stat-accent" style="background:var(--ruby)"></div>
+      <div class="stat-lbl">Annulées</div>
+      <div class="stat-val">${data.filter(v=>v.statut==='Annulé').length}</div>
+    </div>
+    <div class="stat">
+      <div class="stat-accent" style="background:var(--amber)"></div>
+      <div class="stat-lbl">Impayées</div>
+      <div class="stat-val">${data.filter(v=>v.statut==='Impayé').length}</div>
+    </div>`;
+
+  const isToday = cloF==='today';
+  document.getElementById('hist-tbody').innerHTML=data.length===0
+    ?`<tr><td colspan="10" style="text-align:center;color:var(--ink3);padding:2rem">Aucune vente trouvée</td></tr>`
+    :data.map(v=>{
+      const source = DB.ventes.find(x=>x.id===v.id) || DB.historique.find(x=>x.id===v.id);
+      const jourLabel = v.cloture
+        ? `<span class="chip chip-n" style="font-size:0.65rem">${v.cloture}</span>`
+        : `<span class="chip chip-g" style="font-size:0.65rem">Aujourd'hui</span>`;
+      return `<tr>
+        <td><strong>${v.id}</strong></td>
+        <td>${jourLabel}</td>
+        <td style="white-space:nowrap">${v.heure}</td>
+        <td>${v.serveuse||'<span style="color:var(--ink3)">—</span>'}</td>
+        <td style="max-width:150px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${v.items.map(i=>`${i.qty}×${i.nom}`).join(', ')}</td>
+        <td>${v.items.reduce((s,i)=>s+i.qty,0)}</td>
+        <td><strong>${v.total.toLocaleString()} FCFA</strong></td>
+        <td><span class="chip chip-b">${v.mode||'—'}</span></td>
+        <td><span class="chip ${v.statut==='Payé'?'chip-g':v.statut==='Annulé'?'chip-r':'chip-a'}">${v.statut}</span></td>
+        <td class="no-print" style="white-space:nowrap">
+          <button class="btn btn-outline btn-sm" onclick="showRecu(DB.ventes.find(x=>x.id==='${v.id}')||DB.historique.find(x=>x.id==='${v.id}'))">Reçu</button>
+          ${v.statut==='Payé'&&isToday?`<button class="btn btn-danger btn-sm" onclick="annuler('${v.id}')">Annuler</button>`:''}
+        </td>
+      </tr>`;
+    }).join('');
+
+  document.getElementById('hist-print-hd').innerHTML=makePrintHd(
+    cloF==='today'?'Historique — Journée en cours':cloF==='all'?'Historique complet':`Historique — ${cloF}`,
+    `${data.length} transaction(s) · ${total.toLocaleString()} FCFA encaissés`
+  );
+}
+function annuler(id){
+  const v=DB.ventes.find(x=>x.id===id);
+  if(!v) return;
+  v.statut='Annulé';
+  v.annulePar=DB.user?.nom||'Inconnu';
+  v.annuleHeure=tNow();
+  v.annuleRole=DB.user?.role||'';
+  fbSet('ventes', v.id, v);
+  const hiI=DB.historique.findIndex(x=>x.id===v.id);
+  if(hiI>=0){DB.historique[hiI]=v;fbSet('historique',v.id,v);}
+  // Ajouter log dans DB.logs
+  const logEntry={
+    type:'annulation',
+    venteId:id,
+    serveuse:v.serveuse||'—',
+    caissiere:v.caissiere,
+    annulePar:DB.user?.nom||'Inconnu',
+    heure:tNow(),
+    montant:v.total,
+    articles:v.items.map(i=>`${i.qty}x ${i.nom}`).join(', ')
+  };
+  DB.logs.push(logEntry);
+  fbPush('logs', logEntry);
+  renderHist();renderRapport();
+  toast(`Vente ${id} annulée — trace enregistrée`,'ok');
+}
+
+/* ==================== SERVEUSES ==================== */
+function refreshSvLists(){
+  ['pan-sv','hist-sv','imp-filter-sv'].forEach(id=>{
+    const el=document.getElementById(id);if(!el)return;
+    const isF=id.includes('hist')||id.includes('imp');
+    el.innerHTML=isF?'<option value="">Toutes</option>':'<option value="">— Vente directe —</option>';
+    DB.serveuses.forEach(s=>{const o=document.createElement('option');o.value=s.id;o.textContent=s.nom;el.appendChild(o);});
+  });
+}
+function renderSv(){
+  const isA=DB.user?.role==='Admin';
+  // Show/hide add button
+  const wrap=document.getElementById('sv-add-btn-wrap');
+  if(wrap) wrap.innerHTML=isA?`<button class="btn btn-gold" onclick="openModal('modal-sv')">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:14px;height:14px"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+    Ajouter une serveuse</button>`:'';
+
+  const p=DB.ventes.filter(v=>v.statut==='Payé');
+  document.getElementById('sv-grid').innerHTML=DB.serveuses.map(s=>{
+    const vv=p.filter(v=>v.serveuseId==s.id);
+    const qty=vv.reduce((a,v)=>a+v.items.reduce((b,i)=>b+i.qty,0),0);
+    const mt=vv.reduce((a,v)=>a+v.total,0);
+    return `<div class="sv-full-card">
+      <div class="sv-full-av" style="background:${s.color}">${s.initials}</div>
+      <div class="sv-full-name">${s.nom}</div>
+      <div class="sv-full-stats">
+        <div class="sv-full-stat"><div class="sv-full-stat-v">${vv.length}</div><div class="sv-full-stat-l">Ventes</div></div>
+        <div class="sv-full-stat"><div class="sv-full-stat-v">${qty}</div><div class="sv-full-stat-l">Articles</div></div>
+        <div class="sv-full-stat"><div class="sv-full-stat-v">${mt.toLocaleString()}</div><div class="sv-full-stat-l">FCFA</div></div>
+      </div>
+      <button class="btn btn-danger btn-sm" onclick="delSv(${s.id})">Retirer</button>
+    </div>`;
+  }).join('');
+}
+function addSv(){
+  if(DB.user?.role!=='Admin'){toast('Accès réservé au Patron','err');return;}
+  const nom=document.getElementById('sv-nom').value.trim();
+  if(!nom){toast('Nom requis','err');return;}
+  const cols=['#6A3D9B','#B07D2A','#1A5C3A','#1A3A6B','#8B1A1A'];
+  const init=nom.split(' ').map(w=>w[0]).join('').toUpperCase().slice(0,2);
+  const newSv={id:Date.now(),nom,color:cols[DB.serveuses.length%cols.length],initials:init};
+  DB.serveuses.push(newSv);
+  fbSet('serveuses', newSv.id, newSv);
+  refreshSvLists();closeModal('modal-sv');renderSv();toast(`${nom} ajoutée ✓`,'ok');
+  document.getElementById('sv-nom').value='';document.getElementById('sv-tel').value='';
+}
+function delSv(id){if(DB.user?.role!=='Admin'){toast('Accès réservé au Patron','err');return;}DB.serveuses=DB.serveuses.filter(s=>s.id!==id);fbRemove('serveuses',id);refreshSvLists();renderSv();toast('Serveuse retirée');}
+
+/* ==================== STOCK ==================== */
+function renderStockPage(){
+  const isA=DB.user?.role==='Admin';
+  // Add button
+  document.getElementById('stock-add-btn').innerHTML=isA?`<button class="btn btn-gold btn-sm" onclick="openModal('modal-stock')">+ Ajouter article</button>`:'';
+  // Read-only banner
+  const banner=document.getElementById('stock-ro-banner');
+  banner.style.display=isA?'none':'flex';
+  // Actions column header
+  const th=document.getElementById('stock-act-th');
+  if(th)th.style.display=isA?'':'none';
+  // Prix achat, marge, bénéfice headers — patron only
+  ['th-pachat','th-marge','th-benef'].forEach(id=>{
+    const el=document.getElementById(id);
+    if(el)el.style.display=isA?'':'none';
+  });
+  // Summary banner — only show full version for patron
+  const summEl=document.getElementById('stock-summary');
+  if(summEl)summEl.style.display=isA?'':'none';
+  document.getElementById('stock-sub').textContent=isA?'Accès complet — Patron':'Vue lecture seule';
+  document.getElementById('stock-print-hd').innerHTML=makePrintHd('Inventaire du stock',`${DB.stock.length} articles · ${isA?'Accès Admin':'Lecture seule'}`);
+}
+function renderStock(filter){
+  const isA=DB.user?.role==='Admin';
+  const data=filter==='critique'?DB.stock.filter(s=>s.qty<=s.min):DB.stock;
+  // Compute stock summary
+  const totalAchat=DB.stock.reduce((s,x)=>s+(x.prixAchat||0)*x.qty,0);
+  const totalVente=DB.stock.reduce((s,x)=>s+x.prix*x.qty,0);
+  const totalBenef=totalVente-totalAchat;
+  const summEl=document.getElementById('stock-summary');
+  if(summEl) summEl.innerHTML=`
+    <div class="stat">
+      <div class="stat-accent" style="background:var(--b500)"></div>
+      <div class="stat-icon" style="background:var(--b50)"><svg viewBox="0 0 24 24" fill="none" stroke="var(--b500)" stroke-width="2"><path d="M21 16V8a2 2 0 00-1-1.73l-7-4a2 2 0 00-2 0l-7 4A2 2 0 003 8v8a2 2 0 001 1.73l7 4a2 2 0 002 0l7-4A2 2 0 0021 16z"/></svg></div>
+      <div class="stat-lbl">Articles en stock</div>
+      <div class="stat-val">${DB.stock.length}</div>
+      <div class="stat-sub">${DB.stock.reduce((s,x)=>s+x.qty,0)} unités totales</div>
+    </div>
+    <div class="stat">
+      <div class="stat-accent" style="background:var(--sapphire)"></div>
+      <div class="stat-icon" style="background:var(--sapphire-l)"><svg viewBox="0 0 24 24" fill="none" stroke="var(--sapphire)" stroke-width="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg></div>
+      <div class="stat-lbl">Alertes stock</div>
+      <div class="stat-val">${DB.stock.filter(x=>x.qty<=x.min).length}</div>
+      <div class="stat-sub">articles en dessous du min</div>
+    </div>
+    ${isA?`
+    <div class="stat">
+      <div class="stat-accent" style="background:var(--ruby)"></div>
+      <div class="stat-icon" style="background:var(--ruby-l)"><svg viewBox="0 0 24 24" fill="none" stroke="var(--ruby)" stroke-width="2"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 000 7h5a3.5 3.5 0 010 7H6"/></svg></div>
+      <div class="stat-lbl">Valeur d'achat totale</div>
+      <div class="stat-val">${totalAchat.toLocaleString()}</div>
+      <div class="stat-sub">FCFA investis</div>
+    </div>
+    <div class="stat">
+      <div class="stat-accent" style="background:var(--emerald)"></div>
+      <div class="stat-icon" style="background:var(--emerald-l)"><svg viewBox="0 0 24 24" fill="none" stroke="var(--emerald)" stroke-width="2"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/><polyline points="17 6 23 6 23 12"/></svg></div>
+      <div class="stat-lbl">Bénéfice potentiel total</div>
+      <div class="stat-val" style="color:${totalBenef>=0?'var(--emerald)':'var(--ruby)'}">${totalBenef.toLocaleString()}</div>
+      <div class="stat-sub">FCFA de marge brute</div>
+    </div>`:''}`;
+  document.getElementById('stock-tbody').innerHTML=data.map(s=>{
+    const pct=Math.min(100,Math.round(s.qty/Math.max(s.min*3,s.qty)*100));
+    const col=s.qty<=s.min?'var(--ruby)':s.qty<=s.min*1.5?'var(--g600)':'var(--emerald)';
+    const lbl=s.qty<=s.min?'⚠ Critique':s.qty<=s.min*1.5?'Faible':'Bon';
+    const marge=s.prix-(s.prixAchat||0);
+    const margeP=s.prix>0?Math.round(marge/s.prix*100):0;
+    const benef=marge*s.qty;
+    const margCol=marge>0?'var(--emerald)':marge<0?'var(--ruby)':'var(--ink3)';
+    return `<tr>
+      <td>
+        <div style="display:flex;align-items:center;gap:8px">
+          ${s.logo
+            ? `<img src="${s.logo}" style="width:28px;height:28px;object-fit:contain;border-radius:6px;border:1px solid var(--b100)">`
+            : `<span style="font-size:1.2rem">${s.emoji}</span>`}
+          <strong>${s.nom}</strong>
+        </div>
+      </td>
+      <td><span class="chip chip-b">${s.cat}</span></td>
+      <td><strong style="color:${col}">${s.qty}</strong> <span style="font-size:0.72rem;color:var(--ink3)">${s.unit}</span></td>
+      <td style="color:var(--ink3)">${s.min}</td>
+      <td>
+        <div class="stock-bar-wrap">
+          <div style="font-size:0.63rem;color:${col};font-weight:600;">${lbl}</div>
+          <div class="stock-bar"><div class="stock-fill" style="width:${pct}%;background:${col}"></div></div>
+        </div>
+      </td>
+      ${isA?`<td style="color:var(--ink3)">${(s.prixAchat||0).toLocaleString()} F</td>`:'<td style="display:none"></td>'}
+      <td><strong>${s.prix.toLocaleString()} F</strong></td>
+      ${isA?`<td>
+        <span style="font-weight:700;color:${margCol}">${marge.toLocaleString()} F</span>
+        <span style="font-size:0.68rem;color:${margCol};display:block">${margeP}%</span>
+      </td>
+      <td><strong style="color:${margCol}">${benef.toLocaleString()} F</strong></td>`:'<td style="display:none"></td><td style="display:none"></td>'}
+      ${isA?`<td class="no-print" style="white-space:nowrap">
+        <button class="btn btn-outline btn-sm" onclick="openEditItem(${s.id})" style="margin-right:3px">Modifier</button>
+        <button class="btn btn-success btn-sm" onclick="openRestockModal(${s.id})" style="margin-right:3px">+Stock</button>
+        <button class="btn btn-danger btn-sm" onclick="delStock(${s.id})">Suppr.</button>
+      </td>`:'<td class="no-print" style="display:none"></td>'}
+    </tr>`;
+  }).join('');
+}
+function filterStock(f,btn){
+  document.querySelectorAll('#page-stock .cat-pill').forEach(b=>b.classList.remove('on'));
+  btn.classList.add('on');renderStock(f);
+}
+function renderStockBadge(){
+  const n=DB.stock.filter(s=>s.qty<=s.min).length;
+  const el=document.getElementById('badge-stock');
+  el.textContent=n;el.style.display=n?'':'none';
+}
+function previewStockLogo(input){
+  if(!input.files||!input.files[0]) return;
+  const file=input.files[0];
+  if(file.size>1200000){toast('Image trop grande (max 1MB)','err');return;}
+  const reader=new FileReader();
+  reader.onload=e=>{
+    const prev=document.getElementById('st-logo-preview');
+    prev.innerHTML=`<img src="${e.target.result}" style="width:100%;height:100%;object-fit:contain;border-radius:10px;">`;
+    prev.dataset.logo=e.target.result;
+  };
+  reader.readAsDataURL(file);
+}
+
+function uploadLogo(input, target){
+  if(!input.files||!input.files[0]) return;
+  const file=input.files[0];
+  if(file.size>2000000){toast('Image trop grande (max 2MB)','err');return;}
+  const reader=new FileReader();
+  reader.onload=e=>{
+    const src=e.target.result;
+    APP.logo=src;
+    // Update login
+    const lp=document.getElementById('login-logo-ph');
+    const li=document.getElementById('login-logo-img');
+    if(lp&&li){li.src=src;li.style.display='block';lp.style.display='none';}
+    // Update topbar
+    const tp=document.getElementById('tb-logo-ph');
+    const ti=document.getElementById('tb-logo-img');
+    if(tp&&ti){ti.src=src;ti.style.display='block';tp.style.display='none';}
+    toast('Logo mis à jour ✓','ok');
+  };
+  reader.readAsDataURL(file);
+}
+
+function addStock(){
+  if(DB.user?.role!=='Admin'){toast('Accès réservé au Patron','err');return;}
+  const nom=document.getElementById('st-nom').value.trim();
+  const cat=document.getElementById('st-cat').value;
+  const emoji=document.getElementById('st-em').value||'📦';
+  const qty=parseInt(document.getElementById('st-qty').value)||0;
+  const min=parseInt(document.getElementById('st-min').value)||5;
+  const unit=document.getElementById('st-unit').value||'unités';
+  const prixAchat=parseInt(document.getElementById('st-pachat').value)||0;
+  const prix=parseInt(document.getElementById('st-prix').value)||0;
+  const logo=document.getElementById('st-logo-preview')?.dataset?.logo||null;
+  if(!nom||!prix){toast('Nom et prix de vente requis','err');return;}
+  const newItem={id:Date.now(),nom,cat,emoji,qty,min,unit,prixAchat,prix,logo};
+  DB.stock.push(newItem);
+  fbSet('stock', newItem.id, newItem);
+  closeModal('modal-stock');renderStock('tous');renderMenuGrid('tous');renderMenuCats();renderStockBadge();
+  toast(`${nom} ajouté ✓`,'ok');
+  ['st-nom','st-em','st-qty','st-min','st-unit','st-pachat','st-prix'].forEach(id=>document.getElementById(id).value='');
+  const prev=document.getElementById('st-logo-preview');
+  if(prev){prev.innerHTML='<svg viewBox="0 0 24 24" fill="none" stroke="var(--b300)" stroke-width="1.5" style="width:24px;height:24px"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>';prev.dataset.logo='';}
+}
+function restock(id){
+  if(DB.user?.role!=='Admin'){toast('Accès réservé au Patron','err');return;}
+  const s=DB.stock.find(x=>x.id===id);
+  if(s){s.qty+=24;renderStock('tous');renderStockBadge();toast(`${s.nom} réapprovisionné ✓`,'ok');}
+}
+function delStock(id){
+  if(DB.user?.role!=='Admin'){toast('Accès réservé au Patron','err');return;}
+  fbRemove('stock',id);
+  DB.stock=DB.stock.filter(s=>s.id!==id);
+  renderStock('tous');renderMenuGrid('tous');renderMenuCats();renderStockBadge();toast('Article supprimé');
+}
+
+/* ==================== RAPPORT ==================== */
+function renderRapport(){
+  const now=new Date();
+  document.getElementById('rapport-date').textContent=
+    'Journée du '+now.toLocaleDateString('fr-FR',{weekday:'long',day:'numeric',month:'long',year:'numeric'});
+  document.getElementById('rapport-print-hd').innerHTML=makePrintHd('Rapport du jour',
+    now.toLocaleDateString('fr-FR',{weekday:'long',day:'numeric',month:'long',year:'numeric'}));
+
+  const p=DB.ventes.filter(v=>v.statut==='Payé');
+  const tot=p.reduce((s,v)=>s+v.total,0);
+  const qty=p.reduce((s,v)=>s+v.items.reduce((a,i)=>a+i.qty,0),0);
+
+  document.getElementById('rapport-stats').innerHTML=`
+    <div class="stat">
+      <div class="stat-accent" style="background:var(--b500)"></div>
+      <div class="stat-icon" style="background:var(--g50)"><svg viewBox="0 0 24 24" fill="none" stroke="var(--g600)" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg></div>
+      <div class="stat-lbl">Recettes du jour</div>
+      <div class="stat-val">${tot.toLocaleString()}</div>
+      <div class="stat-sub">FCFA encaissés</div>
+    </div>
+    <div class="stat">
+      <div class="stat-accent" style="background:var(--emerald)"></div>
+      <div class="stat-icon" style="background:var(--emerald-l)"><svg viewBox="0 0 24 24" fill="none" stroke="var(--emerald)" stroke-width="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg></div>
+      <div class="stat-lbl">Ventes effectuées</div>
+      <div class="stat-val">${p.length}</div>
+      <div class="stat-sub">Transactions payées</div>
+    </div>
+    <div class="stat">
+      <div class="stat-accent" style="background:var(--sapphire)"></div>
+      <div class="stat-icon" style="background:var(--sapphire-l)"><svg viewBox="0 0 24 24" fill="none" stroke="var(--sapphire)" stroke-width="2"><path d="M6 2L3 6v14a2 2 0 002 2h14a2 2 0 002-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/></svg></div>
+      <div class="stat-lbl">Articles vendus</div>
+      <div class="stat-val">${qty}</div>
+      <div class="stat-sub">Bouteilles / portions</div>
+    </div>
+
+    <div class="stat">
+      <div class="stat-accent" style="background:var(--amber)"></div>
+      <div class="stat-icon" style="background:var(--amber-l)"><svg viewBox="0 0 24 24" fill="none" stroke="var(--amber)" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg></div>
+      <div class="stat-lbl">Impayés en cours</div>
+      <div class="stat-val">${DB.ventes.filter(v=>v.statut==='Impayé').length}</div>
+      <div class="stat-sub">${DB.ventes.filter(v=>v.statut==='Impayé').reduce((s,v)=>s+v.total,0).toLocaleString()} FCFA dus</div>
+    </div>`;
+
+  // Top produits
+  const pm={};
+  p.forEach(v=>v.items.forEach(i=>{
+    if(!pm[i.nom])pm[i.nom]={nom:i.nom,emoji:i.emoji||'',qty:0,mt:0};
+    pm[i.nom].qty+=i.qty;pm[i.nom].mt+=i.prix*i.qty;
+  }));
+  [['Bière Flag 65cl','🍺',34,27200],['Fanta Orange','🍊',27,10800],['Akpeteshie 25cl','🥃',21,12600],['Attiéké + poisson','🐟',18,27000]]
+    .forEach(([n,e,q,m])=>{if(!pm[n])pm[n]={nom:n,emoji:e,qty:q,mt:m};});
+  const tops=Object.values(pm).sort((a,b)=>b.qty-a.qty).slice(0,5);
+  const mq=tops[0]?.qty||1;
+  const progColors=['var(--g400)','var(--sapphire)','var(--emerald)','var(--ruby)','var(--n400)'];
+  document.getElementById('rp-top').innerHTML=tops.map((p,i)=>
+    `<div class="prog-row">
+      <div class="prog-lbl"><span>${p.emoji} ${p.nom}</span><span style="font-weight:700">${p.qty} unités</span></div>
+      <div class="prog-bar"><div class="prog-fill" style="width:${Math.round(p.qty/mq*100)}%;background:${progColors[i]}"></div></div>
+    </div>`
+  ).join('');
+
+  // Cartes serveuses
+  document.getElementById('rp-sv-cards').innerHTML=DB.serveuses.map(s=>{
+    const vv=p.filter(v=>v.serveuseId==s.id);
+    const svQ=vv.reduce((a,v)=>a+v.items.reduce((b,i)=>b+i.qty,0),0);
+    const svM=vv.reduce((a,v)=>a+v.total,0);
+    return `<div class="sv-card">
+      <div class="sv-av" style="background:${s.color}">${s.initials}</div>
+      <div class="sv-info">
+        <div class="sv-name">${s.nom}</div>
+        <div class="sv-mini-stats">
+          <div class="sv-mini-stat"><div class="sv-ms-v">${vv.length}</div><div class="sv-ms-l">Ventes</div></div>
+          <div class="sv-mini-stat"><div class="sv-ms-v">${svQ}</div><div class="sv-ms-l">Articles</div></div>
+          <div class="sv-mini-stat"><div class="sv-ms-v">${svM.toLocaleString()}</div><div class="sv-ms-l">FCFA</div></div>
+        </div>
+      </div>
+    </div>`;
+  }).join('');
+
+  // Tableau détail
+  const rows=[];
+  DB.serveuses.forEach(s=>{
+    const vv=p.filter(v=>v.serveuseId==s.id);
+    if(!vv.length)return;
+    const pm2={};
+    vv.forEach(v=>v.items.forEach(i=>{
+      if(!pm2[i.nom])pm2[i.nom]={nom:i.nom,emoji:i.emoji||'',qty:0,mt:0,prix:i.prix};
+      pm2[i.nom].qty+=i.qty;pm2[i.nom].mt+=i.prix*i.qty;
+    }));
+    const prods=Object.values(pm2).sort((a,b)=>b.qty-a.qty);
+    rows.push(...prods.map((pr,idx)=>`<tr>
+      ${idx===0?`<td rowspan="${prods.length}" style="font-weight:600;vertical-align:top;padding-top:1rem">
+        <div style="display:flex;align-items:center;gap:8px">
+          <div style="width:32px;height:32px;border-radius:8px;background:${s.color};display:flex;align-items:center;justify-content:center;font-size:0.72rem;font-weight:700;color:#fff;flex-shrink:0">${s.initials}</div>
+          ${s.nom}
+        </div>
+      </td>`:''}
+      <td>${pr.emoji} ${pr.nom}</td>
+      <td><strong style="color:var(--g600);font-size:1rem;">${pr.qty}</strong> <span style="color:var(--ink3);font-size:0.8rem">${pr.qty>1?'unités':'unité'}</span></td>
+      <td><strong>${pr.mt.toLocaleString()} FCFA</strong></td>
+    </tr>`));
+  });
+  document.getElementById('rp-sv-detail').innerHTML=rows.length
+    ?rows.join('')
+    :'<tr><td colspan="4" style="text-align:center;color:var(--ink3);padding:2rem">Aucune vente avec serveuse pour le moment</td></tr>';
+}
+
+/* ==================== ADMIN TABS ==================== */
+function admTab(tab){
+  document.querySelectorAll('.adm-tab').forEach((t,i)=>{
+    const tabs=['caissières','serveuses-adm','categories','annulations','parametres'];
+    t.classList.toggle('on', tabs[i]===tab);
+  });
+  document.querySelectorAll('.adm-panel').forEach(p=>p.style.display='none');
+  const el=document.getElementById('adm-'+tab);
+  if(el) el.style.display='block';
+  if(tab==='categories') renderAdminCategories();
+  if(tab==='annulations') renderAnnulations();
+  if(tab==='serveuses-adm') renderAdmSv();
+}
+
+/* ==================== ADMIN ==================== */
+function renderAdmin(){
+  document.getElementById('c-tbody').innerHTML=DB.caissières.map(c=>`
+    <tr>
+      <td>
+        <div style="display:flex;align-items:center;gap:8px">
+          <div style="width:32px;height:32px;border-radius:9px;background:${c.color};display:flex;align-items:center;justify-content:center;font-size:0.72rem;font-weight:700;color:#fff">${c.initials}</div>
+          <div>
+            <div style="font-weight:600;font-size:0.85rem">${c.nom}</div>
+            <div style="font-size:0.7rem;color:var(--ink3)">${c.role}</div>
+          </div>
+        </div>
+      </td>
+      <td><span style="letter-spacing:0.25em;color:var(--ink3);font-size:0.85rem">••••</span></td>
+      <td><span class="chip ${c.role==='Admin'?'chip-r':'chip-g'}">${c.role}</span></td>
+      <td style="white-space:nowrap">
+        ${DB.user?.role==='Admin'
+          ?`<button class="btn btn-outline btn-sm" onclick="openEditC(${c.id})" style="margin-right:4px">Modifier</button>
+            ${DB.user?.id!==c.id?`<button class="btn btn-danger btn-sm" onclick="delC(${c.id})">Suppr.</button>`:''}
+           `
+          :'<span style="color:var(--ink3);font-size:0.75rem">—</span>'}
+      </td>
+    </tr>`).join('');
+  // refresh st-cat options
+  populateCatSelects();
+}
+
+function renderAdmSv(){
+  const grid=document.getElementById('adm-sv-grid');
+  if(!grid) return;
+  const p=DB.ventes.filter(v=>v.statut==='Payé');
+  grid.innerHTML=`
+    <div class="card">
+      <div class="card-body-0 tbl-wrap">
+        <table>
+          <thead><tr><th>Serveuse</th><th>Ventes</th><th>Articles</th><th>Total FCFA</th><th>Actions</th></tr></thead>
+          <tbody>
+            ${DB.serveuses.map(s=>{
+              const vv=p.filter(v=>v.serveuseId==s.id);
+              const qty=vv.reduce((a,v)=>a+v.items.reduce((b,i)=>b+i.qty,0),0);
+              const mt=vv.reduce((a,v)=>a+v.total,0);
+              return `<tr>
+                <td>
+                  <div style="display:flex;align-items:center;gap:8px">
+                    <div style="width:32px;height:32px;border-radius:9px;background:${s.color};display:flex;align-items:center;justify-content:center;font-size:0.72rem;font-weight:700;color:#fff">${s.initials}</div>
+                    <strong>${s.nom}</strong>
+                  </div>
+                </td>
+                <td>${vv.length}</td>
+                <td>${qty}</td>
+                <td><strong>${mt.toLocaleString()}</strong></td>
+                <td style="white-space:nowrap">
+                  <button class="btn btn-outline btn-sm" onclick="openEditSv(${s.id})" style="margin-right:4px">Modifier</button>
+                  <button class="btn btn-danger btn-sm" onclick="delSv(${s.id})">Suppr.</button>
+                </td>
+              </tr>`;
+            }).join('')}
+          </tbody>
+        </table>
+      </div>
+    </div>`;
+}
+
+/* ==================== CATEGORIES ==================== */
+function populateCatSelects(){
+  ['st-cat','edit-cat'].forEach(id=>{
+    const el=document.getElementById(id);
+    if(!el) return;
+    el.innerHTML=DB.categories.map(c=>`<option>${c}</option>`).join('');
+  });
+}
+
+function renderAdminCategories(){
+  populateCatSelects();
+  // Categories table
+  document.getElementById('cat-tbody').innerHTML=DB.categories.map((cat,i)=>{
+    const count=DB.stock.filter(s=>s.cat===cat).length;
+    return `<tr>
+      <td><strong>${cat}</strong></td>
+      <td style="font-size:1.2rem">${DB.stock.find(s=>s.cat===cat)?.emoji||'📦'}</td>
+      <td><span class="chip chip-b">${count} article${count>1?'s':''}</span></td>
+      <td style="white-space:nowrap">
+        <button class="btn btn-outline btn-sm" onclick="openEditCat('${cat}')">Modifier</button>
+        <button class="btn btn-danger btn-sm" onclick="confirmDeleteCat('${cat}',${count})">Supprimer</button>
+      </td>
+    </tr>`;
+  }).join('');
+  // Menu/articles table
+  document.getElementById('menu-admin-tbody').innerHTML=DB.stock.map(s=>`
+    <tr>
+      <td>
+        <div style="display:flex;align-items:center;gap:6px">
+          ${s.logo?`<img src="${s.logo}" style="width:24px;height:24px;object-fit:contain;border-radius:5px">`:`<span style="font-size:1rem">${s.emoji}</span>`}
+          <strong>${s.nom}</strong>
+        </div>
+      </td>
+      <td><span class="chip chip-b">${s.cat}</span></td>
+      <td>${s.prix.toLocaleString()} FCFA</td>
+      <td style="white-space:nowrap">
+        <button class="btn btn-outline btn-sm" onclick="openEditItem(${s.id})">Modifier</button>
+        <button class="btn btn-danger btn-sm" onclick="delStock(${s.id});renderAdminCategories()">Suppr.</button>
+      </td>
+    </tr>`).join('');
+}
+
+function addCat(){
+  const nom=document.getElementById('cat-nom').value.trim();
+  if(!nom){toast('Nom requis','err');return;}
+  if(DB.categories.includes(nom)){toast('Catégorie déjà existante','err');return;}
+  DB.categories.push(nom);
+  fbSetArray('categories', DB.categories);
+  closeModal('modal-add-cat');
+  renderAdminCategories();
+  renderMenuCats();
+  toast(`Catégorie "${nom}" ajoutée ✓`,'ok');
+  document.getElementById('cat-nom').value='';
+  document.getElementById('cat-em').value='';
+}
+
+let _catToDelete = null;
+
+function openEditCat(cat){
+  document.getElementById('edit-cat-old').value=cat;
+  document.getElementById('edit-cat-nom').value=cat;
+  openModal('modal-edit-cat');
+}
+
+function saveEditCat(){
+  const oldNom=document.getElementById('edit-cat-old').value;
+  const newNom=document.getElementById('edit-cat-nom').value.trim();
+  if(!newNom){toast('Nom requis','err');return;}
+  if(newNom===oldNom){closeModal('modal-edit-cat');return;}
+  if(DB.categories.includes(newNom)){toast('Ce nom existe déjà','err');return;}
+  // Rename in categories list
+  const idx=DB.categories.indexOf(oldNom);
+  if(idx>=0) DB.categories[idx]=newNom;
+  // Update all stock items with old category name
+  DB.stock.forEach(s=>{if(s.cat===oldNom)s.cat=newNom;});
+  fbSetArray('categories', DB.categories);
+  fbSetAll('stock', DB.stock);
+  closeModal('modal-edit-cat');
+  renderAdminCategories();renderMenuCats();renderMenuGrid('tous');renderStock('tous');
+  toast(`Catégorie renommée en "${newNom}" ✓`,'ok');
+}
+
+function confirmDeleteCat(cat, count){
+  _catToDelete=cat;
+  document.getElementById('confirm-cat-msg').innerHTML=`
+    <div style="background:var(--ruby-l);border:1px solid rgba(220,38,38,0.2);border-radius:var(--r);padding:1rem;margin-bottom:1rem;">
+      <div style="font-size:0.95rem;font-weight:600;color:var(--ruby);margin-bottom:6px">Catégorie : <em>${cat}</em></div>
+      <div style="font-size:0.85rem;color:var(--ruby);">
+        ${count>0
+          ? `⚠ <strong>${count} article${count>1?'s':''}</strong> lié${count>1?'s':''} à cette catégorie ${count>1?'seront':'sera'} <strong>définitivement supprimé${count>1?'s':''}</strong>.`
+          : 'Aucun article lié à cette catégorie.'}
+      </div>
+    </div>
+    <div style="font-size:0.83rem;color:var(--ink3);">Cette action est irréversible. Confirmez-vous la suppression ?</div>`;
+  openModal('modal-confirm-cat');
+}
+
+function executDeleteCat(){
+  if(!_catToDelete) return;
+  const cat=_catToDelete;
+  // Delete all stock items of this category
+  DB.stock=DB.stock.filter(s=>s.cat!==cat);
+  DB.categories=DB.categories.filter(c=>c!==cat);
+  fbSetAll('stock', DB.stock);
+  fbSetArray('categories', DB.categories);
+  _catToDelete=null;
+  closeModal('modal-confirm-cat');
+  renderAdminCategories();renderMenuCats();renderMenuGrid('tous');renderStock('tous');renderStockBadge();
+  toast(`Catégorie et articles supprimés ✓`,'ok');
+}
+
+function openEditItem(id){
+  const s=DB.stock.find(x=>x.id===id);
+  if(!s) return;
+  document.getElementById('edit-item-id').value=id;
+  document.getElementById('edit-nom').value=s.nom;
+  document.getElementById('edit-em').value=s.emoji||'';
+  document.getElementById('edit-pachat').value=s.prixAchat||0;
+  document.getElementById('edit-prix').value=s.prix;
+  document.getElementById('edit-min').value=s.min;
+  document.getElementById('edit-unit').value=s.unit;
+  populateCatSelects();
+  document.getElementById('edit-cat').value=s.cat;
+  const prev=document.getElementById('edit-logo-preview');
+  if(prev){
+    if(s.logo) prev.innerHTML=`<img src="${s.logo}" style="width:100%;height:100%;object-fit:contain;border-radius:8px">`;
+    else prev.innerHTML=`<span style="font-size:1.4rem">${s.emoji||'📦'}</span>`;
+    prev.dataset.logo=s.logo||'';
+  }
+  openModal('modal-edit-item');
+}
+
+function previewEditLogo(input){
+  if(!input.files||!input.files[0]) return;
+  const reader=new FileReader();
+  reader.onload=e=>{
+    const prev=document.getElementById('edit-logo-preview');
+    prev.innerHTML=`<img src="${e.target.result}" style="width:100%;height:100%;object-fit:contain;border-radius:8px">`;
+    prev.dataset.logo=e.target.result;
+  };
+  reader.readAsDataURL(input.files[0]);
+}
+
+function saveEditItem(){
+  const id=parseInt(document.getElementById('edit-item-id').value);
+  const s=DB.stock.find(x=>x.id===id);
+  if(!s) return;
+  s.nom=document.getElementById('edit-nom').value.trim()||s.nom;
+  s.cat=document.getElementById('edit-cat').value;
+  s.emoji=document.getElementById('edit-em').value||s.emoji;
+  s.prixAchat=parseInt(document.getElementById('edit-pachat').value)||0;
+  s.prix=parseInt(document.getElementById('edit-prix').value)||s.prix;
+  s.min=parseInt(document.getElementById('edit-min').value)||s.min;
+  s.unit=document.getElementById('edit-unit').value||s.unit;
+  const logo=document.getElementById('edit-logo-preview')?.dataset?.logo;
+  if(logo) s.logo=logo;
+  fbSet('stock', s.id, s);
+  closeModal('modal-edit-item');
+  renderAdminCategories();renderMenuGrid('tous');renderStock('tous');renderMenuCats();
+  toast(`${s.nom} modifié ✓`,'ok');
+}
+
+/* ==================== ANNULATIONS (trace patron) ==================== */
+function renderAnnulations(){
+  const tbody=document.getElementById('annul-tbody');
+  const logs=DB.logs.filter(l=>l.type==='annulation');
+  tbody.innerHTML=logs.length===0
+    ?'<tr><td colspan="6" style="text-align:center;color:var(--ink3);padding:2rem">Aucune annulation enregistrée</td></tr>'
+    :logs.reverse().map(l=>`<tr>
+      <td style="white-space:nowrap">${l.heure}</td>
+      <td><strong>${l.venteId}</strong></td>
+      <td>${l.serveuse||'<span style="color:var(--ink3)">—</span>'}</td>
+      <td>
+        <span class="chip ${l.annulePar===l.caissiere?'chip-b':'chip-a'}">${l.annulePar}</span>
+      </td>
+      <td><strong>${l.montant.toLocaleString()} FCFA</strong></td>
+      <td style="font-size:0.78rem;color:var(--ink3);max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${l.articles}</td>
+    </tr>`).join('');
+}
+function addC(){
+  const nom=document.getElementById('c-nom').value.trim();
+  const pin=document.getElementById('c-pin').value.trim();
+  const role=document.getElementById('c-role').value;
+  if(!nom||pin.length!==4||isNaN(pin)){toast('Nom et PIN 4 chiffres requis','err');return;}
+  const cols=['#6A3D9B','#B07D2A','#1A5C3A','#1A3A6B','#8B1A1A'];
+  const init=nom.split(' ').map(w=>w[0]).join('').toUpperCase().slice(0,2);
+  const newC={id:Date.now(),nom,pin,role,color:cols[DB.caissières.length%cols.length],initials:init};
+  DB.caissières.push(newC);
+  fbSet('caissières', newC.id, newC);
+  populateSel();closeModal('modal-c');renderAdmin();toast(`${nom} ajoutée ✓`,'ok');
+  ['c-nom','c-pin'].forEach(id=>document.getElementById(id).value='');
+}
+function delC(id){
+  if(DB.user?.id===id){toast('Impossible de vous supprimer','err');return;}
+  fbRemove('caissières',id);DB.caissières=DB.caissières.filter(c=>c.id!==id);populateSel();renderAdmin();toast('Caissière supprimée');
+}
+
+/* ---- Edit caissière ---- */
+function openEditC(id){
+  const ca=DB.caissières.find(x=>x.id===id);
+  if(!ca) return;
+  document.getElementById('ec-id').value=id;
+  document.getElementById('ec-nom').value=ca.nom;
+  document.getElementById('ec-pin').value='';
+  document.getElementById('ec-role').value=ca.role;
+  openModal('modal-edit-c');
+}
+function saveEditC(){
+  const id=parseInt(document.getElementById('ec-id').value);
+  const ca=DB.caissières.find(x=>x.id===id);
+  if(!ca) return;
+  const nom=document.getElementById('ec-nom').value.trim();
+  const pin=document.getElementById('ec-pin').value.trim();
+  const role=document.getElementById('ec-role').value;
+  if(!nom){toast('Nom requis','err');return;}
+  if(pin && (pin.length!==4||isNaN(pin))){toast('PIN doit être 4 chiffres','err');return;}
+  ca.nom=nom;
+  ca.initials=nom.split(' ').map(w=>w[0]).join('').toUpperCase().slice(0,2);
+  ca.role=role;
+  if(pin) ca.pin=pin;
+  // Update current user display if it's the logged-in user
+  if(DB.user?.id===id){
+    DB.user.nom=nom;DB.user.role=role;DB.user.initials=ca.initials;
+    document.getElementById('tb-name').textContent=nom;
+    document.getElementById('tb-role').textContent=role;
+    document.getElementById('tb-av').textContent=ca.initials;
+  }
+  fbSet('caissières', ca.id, ca);
+  populateSel();closeModal('modal-edit-c');renderAdmin();
+  toast(`${nom} modifiée ✓`,'ok');
+}
+
+/* ---- Edit serveuse ---- */
+function openEditSv(id){
+  const s=DB.serveuses.find(x=>x.id===id);
+  if(!s) return;
+  document.getElementById('esv-id').value=id;
+  document.getElementById('esv-nom').value=s.nom;
+  document.getElementById('esv-color').value=s.color;
+  openModal('modal-edit-sv');
+}
+function saveEditSv(){
+  const id=parseInt(document.getElementById('esv-id').value);
+  const s=DB.serveuses.find(x=>x.id===id);
+  if(!s) return;
+  const nom=document.getElementById('esv-nom').value.trim();
+  const color=document.getElementById('esv-color').value;
+  if(!nom){toast('Nom requis','err');return;}
+  const oldNom=s.nom;
+  s.nom=nom;
+  s.color=color;
+  s.initials=nom.split(' ').map(w=>w[0]).join('').toUpperCase().slice(0,2);
+  // Update ventes references
+  DB.ventes.forEach(v=>{if(v.serveuse===oldNom){v.serveuse=nom;fbSet('ventes',v.id,v);}});
+  DB.logs.forEach(l=>{if(l.serveuse===oldNom)l.serveuse=nom;});
+  fbSet('serveuses', s.id, s);
+  fbSetAll('ventes', DB.ventes);
+  refreshSvLists();closeModal('modal-edit-sv');renderAdmSv();renderSv();
+  toast(`${nom} modifiée ✓`,'ok');
+}
+
+/* ---- Restock avec modal ---- */
+function openRestockModal(id){
+  const s=DB.stock.find(x=>x.id===id);
+  if(!s) return;
+  document.getElementById('rst-id').value=id;
+  document.getElementById('rst-qty').value=24;
+  document.getElementById('rst-info').innerHTML=`
+    <div style="display:flex;align-items:center;gap:8px">
+      <span style="font-size:1.3rem">${s.emoji}</span>
+      <div>
+        <div style="font-weight:600">${s.nom}</div>
+        <div style="color:var(--ink3)">Stock actuel : <strong>${s.qty}</strong> ${s.unit}</div>
+      </div>
+    </div>`;
+  openModal('modal-restock');
+}
+function confirmRestock(){
+  const id=parseInt(document.getElementById('rst-id').value);
+  const qty=parseInt(document.getElementById('rst-qty').value)||0;
+  if(qty<=0){toast('Quantité invalide','err');return;}
+  const s=DB.stock.find(x=>x.id===id);
+  if(s){
+    s.qty+=qty;
+    renderStock('tous');renderStockBadge();
+    closeModal('modal-restock');
+    toast(`+${qty} ${s.unit} ajoutés à ${s.nom} ✓`,'ok');
+  }
+}
+
+/* ==================== INVENTAIRE ==================== */
+let invData = {}; // { stockId: qteComptee }
+
+function renderInventaire(){
+  const now=new Date();
+  document.getElementById('inv-print-hd').innerHTML=makePrintHd(
+    'Inventaire physique',
+    now.toLocaleDateString('fr-FR',{weekday:'long',day:'numeric',month:'long',year:'numeric'})
+  );
+  // Summary
+  let totalEcart=0, totalEcartVal=0, countOk=0, countEcart=0;
+  DB.stock.forEach(s=>{
+    const compte=invData[s.id]!==undefined?invData[s.id]:s.qty;
+    const ecart=compte-s.qty;
+    const ecartVal=ecart*(s.prixAchat||0);
+    totalEcart+=Math.abs(ecart);
+    totalEcartVal+=ecartVal;
+    if(ecart===0) countOk++; else countEcart++;
+  });
+  document.getElementById('inv-summary').innerHTML=`
+    <div class="stat">
+      <div class="stat-accent" style="background:var(--b500)"></div>
+      <div class="stat-lbl">Articles comptés</div>
+      <div class="stat-val">${Object.keys(invData).length} / ${DB.stock.length}</div>
+      <div class="stat-sub">articles renseignés</div>
+    </div>
+    <div class="stat">
+      <div class="stat-accent" style="background:var(--emerald)"></div>
+      <div class="stat-lbl">Conformes</div>
+      <div class="stat-val" style="color:var(--emerald)">${countOk}</div>
+      <div class="stat-sub">sans écart</div>
+    </div>
+    <div class="stat">
+      <div class="stat-accent" style="background:var(--ruby)"></div>
+      <div class="stat-lbl">Avec écart</div>
+      <div class="stat-val" style="color:var(--ruby)">${countEcart}</div>
+      <div class="stat-sub">à régulariser</div>
+    </div>
+    <div class="stat">
+      <div class="stat-accent" style="background:${totalEcartVal>=0?'var(--emerald)':'var(--ruby)'}"></div>
+      <div class="stat-lbl">Valeur des écarts</div>
+      <div class="stat-val" style="color:${totalEcartVal>=0?'var(--emerald)':'var(--ruby)'}">${totalEcartVal.toLocaleString()}</div>
+      <div class="stat-sub">FCFA</div>
+    </div>`;
+  // Table
+  document.getElementById('inv-tbody').innerHTML=DB.stock.map(s=>{
+    const compte=invData[s.id]!==undefined?invData[s.id]:'';
+    const ecart=compte!==''?parseInt(compte)-s.qty:null;
+    const ecartVal=ecart!==null?ecart*(s.prixAchat||0):null;
+    const statut=ecart===null?'<span class="chip chip-n">Non compté</span>':
+      ecart===0?'<span class="chip chip-g">✓ Conforme</span>':
+      ecart>0?'<span class="chip" style="background:#FEF3C7;color:#B45309">▲ Surplus</span>':
+      '<span class="chip chip-r">▼ Manque</span>';
+    const ecartCol=ecart===null?'var(--ink3)':ecart===0?'var(--emerald)':ecart>0?'var(--amber)':'var(--ruby)';
+    return `<tr>
+      <td>
+        <div style="display:flex;align-items:center;gap:8px">
+          ${s.logo?`<img src="${s.logo}" style="width:26px;height:26px;object-fit:contain;border-radius:5px">`:`<span style="font-size:1.1rem">${s.emoji}</span>`}
+          <strong>${s.nom}</strong>
+        </div>
+      </td>
+      <td><span class="chip chip-b">${s.cat}</span></td>
+      <td><strong>${s.qty}</strong> <span style="color:var(--ink3);font-size:0.78rem">${s.unit}</span></td>
+      <td>
+        <input type="number" min="0" value="${compte}"
+          style="width:90px;padding:5px 8px;border:1.5px solid var(--b200);border-radius:7px;font-family:var(--font);font-size:0.85rem;outline:none;text-align:center;"
+          onchange="setInvQty(${s.id},this.value)"
+          onfocus="this.style.borderColor='var(--b400)'"
+          onblur="this.style.borderColor='var(--b200)'">
+      </td>
+      <td style="font-weight:700;color:${ecartCol}">${ecart!==null?(ecart>0?'+':'')+ecart:'—'}</td>
+      <td style="font-weight:600;color:${ecartCol}">${ecartVal!==null?(ecartVal>0?'+':'')+ecartVal.toLocaleString()+' F':'—'}</td>
+      <td>${statut}</td>
+    </tr>`;
+  }).join('');
+}
+
+function setInvQty(id, val){
+  invData[id]=parseInt(val)||0;
+  renderInventaire();
+}
+
+function resetInventaire(){
+  invData={};
+  renderInventaire();
+  toast('Inventaire réinitialisé');
+}
+
+function validerInventaire(){
+  let count=0;
+  DB.stock.forEach(s=>{
+    if(invData[s.id]!==undefined){
+      s.qty=invData[s.id];
+      fbSet('stock', s.id, s);
+      count++;
+    }
+  });
+  if(count===0){toast('Aucune quantité saisie','err');return;}
+  invData={};
+  renderInventaire();
+  renderStock('tous');
+  renderStockBadge();
+  toast(`Inventaire validé — ${count} articles mis à jour ✓`,'ok');
+  // Log inventaire
+  DB.logs.push({
+    type:'inventaire',
+    heure:tNow(),
+    validePar:DB.user?.nom||'',
+    nbArticles:count
+  });
+}
+
+/* ==================== PRINT ==================== */
+function nomMaquis(){return document.getElementById('p-nom')?.value||'MaquisPro';}
+
+function updateBrandName(val){
+  const el=document.getElementById('tb-brand-text');
+  if(el) el.childNodes[0].textContent=val||'MaquisPro';
+  const el2=document.getElementById('login-brand-name');
+  if(el2) el2.textContent=val||'MaquisPro';
+  const ph=document.getElementById('login-logo-ph');
+  if(ph) ph.textContent=(val||'M')[0].toUpperCase();
+  const tph=document.getElementById('tb-logo-ph');
+  if(tph) tph.textContent=(val||'M')[0].toUpperCase();
+}
+
+function uploadLogoFromParam(input){
+  if(!input.files||!input.files[0]) return;
+  const file=input.files[0];
+  if(file.size>2000000){toast('Image trop grande (max 2MB)','err');return;}
+  const reader=new FileReader();
+  reader.onload=e=>{
+    const src=e.target.result;
+    APP.logo=src;
+    // Update preview in params
+    const prev=document.getElementById('param-logo-preview');
+    if(prev) prev.innerHTML=`<img src="${src}" style="width:100%;height:100%;object-fit:contain;border-radius:14px;">`;
+    // Update all logo spots
+    ['login-logo-ph','tb-logo-ph'].forEach(id=>{
+      const el=document.getElementById(id);if(el)el.style.display='none';
+    });
+    ['login-logo-img','tb-logo-img'].forEach(id=>{
+      const el=document.getElementById(id);if(el){el.src=src;el.style.display='block';}
+    });
+    toast('Logo mis à jour ✓','ok');
+  };
+  reader.readAsDataURL(file);
+}
+function tNow(){return new Date().toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit'});}
+function makePrintHd(title,sub){
+  const now=new Date();
+  return `<div style="border-bottom:2px solid #C9922A;padding-bottom:1rem;margin-bottom:1.5rem;display:flex;justify-content:space-between;align-items:flex-end;">
+    <div>
+      <div style="font-family:'Cormorant Garamond',serif;font-size:1.6rem;font-weight:700;color:#3D2A05">${nomMaquis()}</div>
+      <div style="font-size:0.75rem;color:#6B6B62">${document.getElementById('p-ville')?.value||''} · ${document.getElementById('p-tel')?.value||''}</div>
+    </div>
+    <div style="text-align:right">
+      <div style="font-size:1rem;font-weight:600;color:#3D2A05">${title}</div>
+      <div style="font-size:0.78rem;color:#6B6B62">${sub}</div>
+      <div style="font-size:0.72rem;color:#A8A89E">Imprimé le ${now.toLocaleDateString('fr-FR')} à ${now.toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit'})}</div>
+      <div style="font-size:0.72rem;color:#A8A89E">Par : ${DB.user?.nom||''}</div>
+    </div>
+  </div>`;
+}
+
+let printTarget='';
+function printPage(page){
+  // Update print headers
+  if(page==='rapport'){renderRapport();}
+  if(page==='stock'){renderStockPage();renderStock('tous');}
+  if(page==='historique'){renderHist();}
+  if(page==='impayes'){renderImpayes();}
+  if(page==='inventaire'){renderInventaire();}
+  if(page==='clotures'){renderClotures();}
+  // Mark which page to print
+  document.querySelectorAll('.main').forEach(e=>{
+    e.classList.remove('print-target');
+    if(e.id==='page-'+page)e.classList.add('print-target');
+  });
+  // Show print headers
+  document.querySelectorAll('.print-header').forEach(e=>{
+    e.style.display = e.closest('#page-'+page) ? 'block' : 'none';
+  });
+  window.print();
+  // Reset after print
+  setTimeout(()=>{
+    document.querySelectorAll('.main').forEach(e=>e.classList.remove('print-target'));
+    document.querySelectorAll('.print-header').forEach(e=>e.style.display='none');
+  },1000);
+}
+
+/* ==================== MODAL / TOAST ==================== */
+function openModal(id){document.getElementById(id).classList.add('on');}
+function closeModal(id){document.getElementById(id).classList.remove('on');}
+document.querySelectorAll('.overlay').forEach(el=>{
+  el.addEventListener('click',function(e){if(e.target===this)this.classList.remove('on');});
+});
+function syncToast(msg){
+  const el=document.getElementById('sync-indicator');
+  if(el){
+    el.innerHTML=`<span style="animation:pulse 1s infinite">⟳</span> <span style="color:#93C5FD">${msg}</span>`;
+    setTimeout(()=>{if(el)el.innerHTML='<span style="color:#6EE7B7">✅ Synchronisé</span>';},1500);
+  }
+}
+function toast(msg,type=''){
+  const c=document.getElementById('toasts');
+  const t=document.createElement('div');
+  t.className='toast'+(type?(' '+type):'');
+  const icon=type==='ok'?'✓':type==='err'?'✕':'ℹ';
+  t.innerHTML=`<span style="font-size:0.9rem">${icon}</span> ${msg}`;
+  c.appendChild(t);setTimeout(()=>t.remove(),3200);
+}
+
+/* ==================== AIDE INTERACTIVE ==================== */
+let helpChapter = 0;
+
+const HELP_CHAPTERS = [
+  {
+    id:'intro', label:'🏠 Démarrage',
+    title:'Bienvenue dans MaquisPro',
+    content:`
+      <div style="text-align:center;margin-bottom:2rem;">
+        <div style="width:80px;height:80px;background:linear-gradient(135deg,var(--b500),var(--b700));border-radius:20px;margin:0 auto 1rem;display:flex;align-items:center;justify-content:center;">
+          <svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="1.5" style="width:40px;height:40px"><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+        </div>
+        <h2 style="font-family:var(--font-serif);font-size:1.5rem;color:var(--b800);margin-bottom:0.5rem">MaquisPro — Guide complet</h2>
+        <p style="color:var(--ink3);font-size:0.9rem">Votre logiciel de gestion de bar et maquis</p>
+      </div>
+      ${helpSection('Qu\'est-ce que MaquisPro ?','MaquisPro est un logiciel de gestion complet pour votre bar ou maquis. Il vous permet de gérer vos ventes, votre stock, vos serveuses et vos caissières depuis n\'importe quel appareil — ordinateur ou téléphone.')}
+      ${helpSection('Ce que vous pouvez faire','<ul style="margin:0.5rem 0 0 1rem;line-height:2"><li>Enregistrer des ventes rapidement</li><li>Gérer les commandes soldées et impayées</li><li>Suivre votre stock et vos bénéfices</li><li>Faire l\'inventaire physique</li><li>Consulter les rapports du jour</li><li>Gérer plusieurs caissières avec codes PIN</li></ul>')}
+      ${helpSection('Les rôles dans le logiciel','Il existe deux types de comptes :<br><br><strong style="color:var(--emerald)">● Caissière</strong> — Peut faire des ventes, voir le stock (lecture seule), consulter l\'historique et les rapports.<br><br><strong style="color:var(--ruby)">● Patron (Admin)</strong> — Accès complet : tout ce que fait la caissière + modifier le stock, gérer les serveuses, voir les annulations, accéder à l\'administration.')}
+    `
+  },
+  {
+    id:'login', label:'🔐 Connexion',
+    title:'Connexion au logiciel',
+    content:`
+      ${helpSection('Comment se connecter ?','<ol style="margin:0.5rem 0 0 1rem;line-height:2.2"><li>Sur l\'écran de connexion, cliquez sur votre <strong>nom dans la liste</strong> déroulante</li><li>Entrez votre <strong>code PIN à 4 chiffres</strong> sur le pavé numérique</li><li>Cliquez <strong>OK</strong> ou attendez que le 4ème chiffre soit saisi</li><li>Vous êtes connecté ! Le logiciel affiche votre nom en haut à droite</li></ol>')}
+      ${helpAlert('info','Le Patron peut ajouter ou modifier les codes PIN dans Administration → Caissières.')}
+      ${helpSection('Se déconnecter','Cliquez sur le bouton <strong>Déconnexion</strong> en haut à droite de l\'écran. Le logiciel retourne à l\'écran de connexion.')}
+      ${helpSection('Ajouter un logo','Sur l\'écran de connexion, cliquez sur le carré bleu en haut (les initiales) pour télécharger le logo de votre maquis. Il s\'affichera sur la barre supérieure.')}
+    `
+  },
+  {
+    id:'vente', label:'💳 Vente rapide',
+    title:'Faire une vente',
+    content:`
+      ${helpSection('Étape 1 — Sélectionner les produits','Dans la page <strong>Vente rapide</strong>, vous voyez tous vos produits organisés par catégories. Cliquez simplement sur un produit pour l\'ajouter au panier. Vous pouvez filtrer par catégorie avec les boutons en haut.')}
+      ${helpSection('Étape 2 — Choisir la serveuse','Dans le panneau de droite (le panier), sélectionnez la <strong>serveuse concernée</strong> dans la liste déroulante. Si c\'est une vente directe au comptoir, laissez "Vente directe".')}
+      ${helpSection('Étape 3 — Soldée ou Non soldée ?','Choisissez le statut de la vente :<br><br><strong style="color:var(--emerald)">✓ Soldée</strong> — Le client paie maintenant. Entrez le montant reçu et la monnaie est calculée automatiquement.<br><br><strong style="color:var(--ruby)">⏳ Non soldée</strong> — Le client paie plus tard. Une facture impayée est créée au nom de la serveuse.')}
+      ${helpSection('Étape 4 — Confirmer','Cliquez <strong>Encaisser →</strong>, choisissez le mode de paiement (Espèces, MTN Money, Orange Money, Carte), entrez le montant reçu et confirmez. Un reçu s\'affiche automatiquement.')}
+      ${helpAlert('success','Le stock est automatiquement mis à jour dès qu\'une vente est confirmée, soldée ou non.')}
+      ${helpSection('Modifier le panier','Utilisez les boutons + et − à côté de chaque article pour ajuster les quantités. Le bouton <strong>Vider</strong> efface tout le panier.')}
+    `
+  },
+  {
+    id:'impayes', label:'⏳ Impayés',
+    title:'Gérer les factures impayées',
+    content:`
+      ${helpSection('Qu\'est-ce qu\'un impayé ?','Quand une serveuse apporte une commande mais que le client ne paie pas immédiatement, la caissière crée une vente <strong>Non soldée</strong>. Cette vente devient une facture impayée, visible dans le menu <strong>Impayés</strong>.')}
+      ${helpSection('Voir les impayés','Cliquez sur <strong>Impayés</strong> dans le menu. Vous voyez toutes les factures en attente avec le nom de la serveuse, les articles et le montant dû. Le badge rouge dans le menu indique combien de factures sont en attente.')}
+      ${helpSection('Solder une facture','Quand le client revient payer :<ol style="margin:0.5rem 0 0 1rem;line-height:2"><li>Trouvez la facture dans la liste</li><li>Cliquez <strong>Solder la facture →</strong></li><li>Choisissez le mode de paiement</li><li>Entrez le montant reçu</li><li>Confirmez — la facture passe automatiquement en comptabilité</li></ol>')}
+      ${helpSection('Imprimer une facture impayée','Cliquez sur le bouton <strong>Facture</strong> à côté de la vente. Une facture avec la mention "FACTURE IMPAYÉE" s\'affiche, prête à imprimer.')}
+      ${helpAlert('warn','Une facture impayée ne peut être soldée qu\'en totalité. Pas de paiement partiel.')}
+    `
+  },
+  {
+    id:'historique', label:'📋 Historique',
+    title:'Consulter l\'historique',
+    content:`
+      ${helpSection('Accéder à l\'historique','Cliquez sur <strong>Historique</strong> dans le menu. Vous voyez toutes les ventes de la session en cours : soldées, impayées et annulées.')}
+      ${helpSection('Filtrer les ventes','Utilisez les filtres en haut pour :<ul style="margin:0.5rem 0 0 1rem;line-height:2"><li><strong>Filtrer par serveuse</strong> — voir les ventes d\'une serveuse précise</li><li><strong>Filtrer par statut</strong> — Payé, Annulé</li></ul>')}
+      ${helpSection('Annuler une vente','Cliquez sur le bouton <strong>Annuler</strong> à côté d\'une vente payée. La vente passe au statut "Annulé" et une trace est enregistrée dans le journal des annulations (visible par le Patron uniquement).')}
+      ${helpSection('Réimprimer un reçu','Cliquez sur le bouton <strong>Reçu</strong> à côté d\'une vente pour afficher et imprimer le reçu à nouveau.')}
+      ${helpAlert('info','L\'historique se réinitialise à chaque nouvelle session. Imprimez les rapports en fin de journée pour garder une trace.')}
+    `
+  },
+  {
+    id:'rapport', label:'📊 Rapport',
+    title:'Rapport du jour',
+    content:`
+      ${helpSection('Que contient le rapport ?','Le rapport du jour résume toute l\'activité : recettes encaissées, nombre de ventes, articles vendus, factures impayées en cours.')}
+      ${helpSection('Top produits','Un graphique en barres montre les produits les plus vendus de la journée, avec le nombre d\'unités et leur part des ventes.')}
+      ${helpSection('Performance par serveuse','Pour chaque serveuse, vous voyez :<ul style="margin:0.5rem 0 0 1rem;line-height:2"><li>Nombre de ventes générées</li><li>Total des articles vendus (bouteilles, portions…)</li><li>Montant total encaissé pour elle</li></ul>')}
+      ${helpSection('Détail article par serveuse','Le tableau en bas donne le détail précis : quelle serveuse a vendu combien de chaque produit. Très utile pour vérifier les commissions ou la performance.')}
+      ${helpSection('Imprimer le rapport','Cliquez sur <strong>Imprimer le rapport</strong> en haut à droite. Un rapport A4 professionnel avec l\'en-tête de votre maquis s\'imprime.')}
+    `
+  },
+  {
+    id:'stock', label:'📦 Stock',
+    title:'Gérer le stock',
+    content:`
+      ${helpAlert('info','Les caissières peuvent <strong>consulter</strong> le stock. Seul le Patron peut <strong>modifier</strong> le stock.')}
+      ${helpSection('Tableau du stock','Le stock affiche pour chaque article :<ul style="margin:0.5rem 0 0 1rem;line-height:2"><li><strong>Quantité en stock</strong> — avec indicateur de niveau (Bon / Faible / Critique)</li><li><strong>Prix d\'achat</strong> — ce que vous payez le fournisseur</li><li><strong>Prix de vente</strong> — ce que vous vendez au client</li><li><strong>Marge par unité</strong> — bénéfice sur chaque article vendu</li><li><strong>Bénéfice stock</strong> — si vous vendez tout ce qui est en stock</li></ul>')}
+      ${helpSection('Les 4 indicateurs en haut','<ul style="margin:0.5rem 0 0 1rem;line-height:2"><li><strong>Articles en stock</strong> — nombre total d\'articles référencés</li><li><strong>Valeur d\'achat</strong> — ce que vous avez investi dans le stock actuel</li><li><strong>Valeur de vente</strong> — recette potentielle si tout est vendu</li><li><strong>Bénéfice potentiel</strong> — marge brute si tout est vendu</li></ul>')}
+      ${helpSection('Ajouter un article (Patron)','Cliquez <strong>+ Ajouter article</strong>. Remplissez : nom, catégorie, emoji ou logo, quantité, stock minimum, unité, prix d\'achat et prix de vente.')}
+      ${helpSection('Réapprovisionner (Patron)','Cliquez <strong>+Stock</strong> sur un article. Entrez la quantité reçue du fournisseur.')}
+      ${helpSection('Alerte stock critique','Quand un article passe sous son stock minimum, il apparaît en rouge et un badge rouge s\'affiche dans le menu.')}
+    `
+  },
+  {
+    id:'inventaire', label:'🔢 Inventaire',
+    title:'Faire un inventaire physique',
+    content:`
+      ${helpSection('Qu\'est-ce que l\'inventaire ?','L\'inventaire physique consiste à <strong>compter réellement</strong> ce que vous avez dans votre bar, et à comparer avec ce que le logiciel pense que vous avez (stock théorique). Cela permet de détecter les pertes, vols ou erreurs.')}
+      ${helpSection('Comment faire l\'inventaire ?','<ol style="margin:0.5rem 0 0 1rem;line-height:2.2"><li>Cliquez sur <strong>Inventaire</strong> dans le menu</li><li>Pour chaque article, comptez physiquement vos unités</li><li>Saisissez la quantité comptée dans la case de la ligne</li><li>Les écarts s\'affichent automatiquement en rouge (manque) ou en jaune (surplus)</li><li>Quand tout est compté, cliquez <strong>✓ Valider l\'inventaire</strong></li><li>Le stock est mis à jour avec les quantités réelles</li></ol>')}
+      ${helpSection('Lire les résultats','<ul style="margin:0.5rem 0 0 1rem;line-height:2"><li><strong style="color:var(--emerald)">✓ Conforme</strong> — Stock réel = stock théorique</li><li><strong style="color:var(--amber)">▲ Surplus</strong> — Vous avez plus que prévu (réapprovisionnement non enregistré ?)</li><li><strong style="color:var(--ruby)">▼ Manque</strong> — Vous avez moins que prévu (perte, vol, consommation interne ?)</li></ul>')}
+      ${helpAlert('warn','Validez l\'inventaire seulement quand tout est compté. L\'action met à jour le stock définitivement.')}
+      ${helpSection('Imprimer l\'inventaire','Cliquez <strong>Imprimer</strong> pour une feuille d\'inventaire avec les écarts et les valeurs.')}
+    `
+  },
+  {
+    id:'admin', label:'⚙️ Administration',
+    title:'Administration (Patron uniquement)',
+    content:`
+      ${helpAlert('warn','Cette section est réservée au Patron. Les caissières n\'y ont pas accès.')}
+      ${helpSection('Onglet Caissières','Gérez les comptes de vos caissières :<ul style="margin:0.5rem 0 0 1rem;line-height:2"><li><strong>Ajouter</strong> — Créez un compte avec nom, PIN à 4 chiffres et rôle</li><li><strong>Modifier</strong> — Changez le nom, le PIN ou le rôle</li><li><strong>Supprimer</strong> — Supprimez un compte (impossible de supprimer votre propre compte)</li></ul>')}
+      ${helpSection('Onglet Serveuses','Gérez votre équipe de service :<ul style="margin:0.5rem 0 0 1rem;line-height:2"><li><strong>Ajouter</strong> — Nom et couleur de la serveuse</li><li><strong>Modifier</strong> — Changer le nom ou la couleur</li><li><strong>Supprimer</strong> — Retirer une serveuse</li></ul>Les statistiques de ventes de chaque serveuse sont visibles ici.')}
+      ${helpSection('Onglet Catégories & Menu','Organisez vos produits :<ul style="margin:0.5rem 0 0 1rem;line-height:2"><li><strong>Créer une catégorie</strong> — ex : Bières, Vins, Jus…</li><li><strong>Renommer</strong> — Tous les articles liés sont mis à jour automatiquement</li><li><strong>Supprimer</strong> — Supprime aussi tous les articles de cette catégorie</li><li><strong>Modifier un article</strong> — Nom, prix, logo, catégorie…</li></ul>')}
+      ${helpSection('Onglet Annulations','Journal de toutes les ventes annulées : qui a annulé, quelle serveuse était concernée, quel montant. Sert à détecter les abus.')}
+      ${helpSection('Onglet Paramètres','Personnalisez votre maquis : nom, téléphone, ville, logo. Ces informations apparaissent sur les reçus et rapports imprimés.')}
+    `
+  },
+  {
+    id:'tips', label:'💡 Astuces',
+    title:'Conseils & bonnes pratiques',
+    content:`
+      ${helpSection('Fin de journée — Que faire ?','<ol style="margin:0.5rem 0 0 1rem;line-height:2.2"><li>Vérifiez qu\'il ne reste pas de <strong>factures impayées</strong> non soldées</li><li>Imprimez le <strong>Rapport du jour</strong> pour garder une trace</li><li>Faites un <strong>inventaire rapide</strong> des produits critiques</li><li>Le Patron vérifie le <strong>journal des annulations</strong></li></ol>')}
+      ${helpSection('Utilisation sur téléphone','MaquisPro fonctionne sur téléphone mobile. Sur petit écran, le menu latéral se réduit en icônes. Faites défiler horizontalement les tableaux pour voir toutes les colonnes.')}
+      ${helpSection('Ajouter un logo de boisson','Dans Administration → Catégories & Menu, cliquez <strong>Modifier</strong> sur un article. Cliquez sur le carré image pour télécharger le logo de la bouteille (PNG ou JPG).')}
+      ${helpSection('Retrouver une vente','Dans Historique, utilisez les filtres par serveuse ou par statut pour retrouver rapidement une transaction.')}
+      ${helpSection('Que faire si le stock ne correspond pas ?','Faites un <strong>inventaire physique</strong> (menu Inventaire). Comptez les articles réels et validez. Le stock se corrige automatiquement.')}
+      ${helpAlert('success','Conseil : Demandez à chaque serveuse de mentionner son nom à la caissière à chaque commande. Cela garantit des rapports précis en fin de journée.')}
+    `
+  }
+];
+
+function helpSection(title, body){
+  return `<div style="margin-bottom:1.5rem">
+    <div style="display:flex;align-items:center;gap:8px;margin-bottom:0.6rem">
+      <div style="width:4px;height:20px;background:var(--b500);border-radius:2px;flex-shrink:0"></div>
+      <h3 style="font-size:0.95rem;font-weight:600;color:var(--b800)">${title}</h3>
+    </div>
+    <div style="font-size:0.88rem;color:var(--ink2);line-height:1.75;padding-left:12px">${body}</div>
+  </div>`;
+}
+
+function helpAlert(type, msg){
+  const cfg={
+    info:{bg:'var(--b50)',border:'var(--b200)',col:'var(--b700)',icon:'<circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/>'},
+    warn:{bg:'var(--amber-l)',border:'rgba(217,119,6,0.25)',col:'var(--amber)',icon:'<path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/>'},
+    success:{bg:'var(--emerald-l)',border:'rgba(5,150,105,0.2)',col:'var(--emerald)',icon:'<path d="M22 11.08V12a10 10 0 11-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/>'}
+  };
+  const t=cfg[type]||cfg.info;
+  return `<div style="background:${t.bg};border:1px solid ${t.border};border-radius:var(--r);padding:0.85rem 1rem;margin-bottom:1.5rem;display:flex;align-items:flex-start;gap:10px;font-size:0.83rem;color:${t.col}">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:16px;height:16px;flex-shrink:0;margin-top:1px">${t.icon}</svg>
+    <span>${msg}</span>
+  </div>`;
+}
+
+function openHelp(chapter){
+  helpChapter = chapter||0;
+  renderHelpChapter();
+  openModal('modal-help');
+}
+
+function renderHelpChapter(){
+  const ch=HELP_CHAPTERS[helpChapter];
+  if(!ch) return;
+  // Tabs
+  document.getElementById('help-tabs').innerHTML=HELP_CHAPTERS.map((h,i)=>
+    `<button onclick="helpGoto(${i})" style="padding:5px 10px;border-radius:6px;border:1px solid ${i===helpChapter?'rgba(255,255,255,0.6)':'rgba(255,255,255,0.2)'};background:${i===helpChapter?'rgba(255,255,255,0.25)':'transparent'};color:#fff;font-size:0.75rem;cursor:pointer;font-family:var(--font);white-space:nowrap;">${h.label}</button>`
+  ).join('');
+  // Content
+  document.getElementById('help-content').innerHTML=`
+    <h2 style="font-family:var(--font-serif);font-size:1.4rem;color:var(--b800);margin-bottom:1.5rem;padding-bottom:0.75rem;border-bottom:2px solid var(--b100)">${ch.title}</h2>
+    ${ch.content}`;
+  // Counter & nav buttons
+  document.getElementById('help-counter').textContent=`${helpChapter+1} / ${HELP_CHAPTERS.length}`;
+  document.getElementById('help-prev').style.visibility=helpChapter===0?'hidden':'visible';
+  document.getElementById('help-next').textContent=helpChapter===HELP_CHAPTERS.length-1?'Fermer ✓':'Suivant →';
+  // Scroll to top
+  const content=document.querySelector('#modal-help > div');
+  if(content) content.scrollTop=0;
+}
+
+function helpGoto(i){helpChapter=i;renderHelpChapter();}
+
+function helpNav(dir){
+  helpChapter+=dir;
+  if(helpChapter>=HELP_CHAPTERS.length){closeModal('modal-help');return;}
+  if(helpChapter<0)helpChapter=0;
+  renderHelpChapter();
+}
+
+/* ==================== CLÔTURE JOURNALIÈRE ==================== */
+function ouvrirCloture(){
+  const p = DB.ventes.filter(v=>v.statut==='Payé');
+  const imp = DB.ventes.filter(v=>v.statut==='Impayé');
+  const tot = p.reduce((s,v)=>s+v.total,0);
+  const qty = p.reduce((s,v)=>s+v.items.reduce((a,i)=>a+i.qty,0),0);
+  const now = new Date();
+
+  document.getElementById('cloture-caissiere').value = DB.user?.nom||'';
+  document.getElementById('cloture-recap').innerHTML=`
+    <div style="background:var(--n50);border:1px solid var(--border);border-radius:var(--r);padding:1rem;">
+      <div style="font-size:0.78rem;color:var(--ink3);margin-bottom:0.75rem;font-weight:600;text-transform:uppercase;letter-spacing:0.06em">
+        Résumé de la journée — ${now.toLocaleDateString('fr-FR',{weekday:'long',day:'numeric',month:'long',year:'numeric'})}
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:0.5rem;">
+        <div style="background:#fff;border:1px solid var(--border);border-radius:8px;padding:0.65rem 0.9rem;">
+          <div style="font-size:0.7rem;color:var(--ink3);text-transform:uppercase;letter-spacing:0.06em">Recettes</div>
+          <div style="font-size:1.2rem;font-weight:700;color:var(--emerald)">${tot.toLocaleString()} FCFA</div>
+        </div>
+        <div style="background:#fff;border:1px solid var(--border);border-radius:8px;padding:0.65rem 0.9rem;">
+          <div style="font-size:0.7rem;color:var(--ink3);text-transform:uppercase;letter-spacing:0.06em">Ventes</div>
+          <div style="font-size:1.2rem;font-weight:700;color:var(--b600)">${p.length}</div>
+        </div>
+        <div style="background:#fff;border:1px solid var(--border);border-radius:8px;padding:0.65rem 0.9rem;">
+          <div style="font-size:0.7rem;color:var(--ink3);text-transform:uppercase;letter-spacing:0.06em">Articles vendus</div>
+          <div style="font-size:1.2rem;font-weight:700;color:var(--ink)">${qty}</div>
+        </div>
+        <div style="background:#fff;border:1px solid ${imp.length>0?'rgba(220,38,38,0.3)':'var(--border)'};border-radius:8px;padding:0.65rem 0.9rem;">
+          <div style="font-size:0.7rem;color:var(--ink3);text-transform:uppercase;letter-spacing:0.06em">Impayés</div>
+          <div style="font-size:1.2rem;font-weight:700;color:${imp.length>0?'var(--ruby)':'var(--emerald)'}">${imp.length}</div>
+        </div>
+      </div>
+    </div>`;
+  openModal('modal-cloture');
+}
+
+function confirmerCloture(){
+  const now = new Date();
+  const p = DB.ventes.filter(v=>v.statut==='Payé');
+  const imp = DB.ventes.filter(v=>v.statut==='Impayé');
+  const ann = DB.ventes.filter(v=>v.statut==='Annulé');
+  const tot = p.reduce((s,v)=>s+v.total,0);
+  const qty = p.reduce((s,v)=>s+v.items.reduce((a,i)=>a+i.qty,0),0);
+
+  // Build top produits
+  const pm={};
+  p.forEach(v=>v.items.forEach(i=>{
+    if(!pm[i.nom])pm[i.nom]={nom:i.nom,emoji:i.emoji||'',qty:0,mt:0};
+    pm[i.nom].qty+=i.qty; pm[i.nom].mt+=i.prix*i.qty;
+  }));
+  const tops=Object.values(pm).sort((a,b)=>b.qty-a.qty).slice(0,5);
+
+  // Build serveuses perf
+  const svPerf=DB.serveuses.map(s=>{
+    const vv=p.filter(v=>v.serveuseId==s.id);
+    return {nom:s.nom, ventes:vv.length, qty:vv.reduce((a,v)=>a+v.items.reduce((b,i)=>b+i.qty,0),0), total:vv.reduce((a,v)=>a+v.total,0)};
+  }).filter(s=>s.ventes>0);
+
+  // Archive cloture
+  const cloture = {
+    id: 'CLO-'+String(DB.clotures.length+1).padStart(3,'0'),
+    date: now.toLocaleDateString('fr-FR',{weekday:'long',day:'numeric',month:'long',year:'numeric'}),
+    dateISO: now.toISOString().split('T')[0],
+    heure: tNow(),
+    caissiere: DB.user?.nom||'',
+    recettes: tot,
+    nbVentes: p.length,
+    nbArticles: qty,
+    nbImpayes: imp.length,
+    montantImpayes: imp.reduce((s,v)=>s+v.total,0),
+    nbAnnulations: ann.length,
+    tops,
+    svPerf,
+    ventesDetail: [...DB.ventes],
+    logsDetail: [...DB.logs],
+  };
+  DB.clotures.push(cloture);
+  fbPush('clotures', cloture);
+
+  // Marquer toutes les ventes de la journée avec l'ID de clôture
+  DB.ventes.forEach(v=>{
+    v.cloture=cloture.id;
+    v.dateCloture=cloture.date;
+    const hiI=DB.historique.findIndex(x=>x.id===v.id);
+    if(hiI>=0) DB.historique[hiI]=v;
+    fbSet('historique', v.id, v);
+  });
+
+  // Reset daily data (ventes du jour seulement, PAS historique)
+  DB.ventes=[];
+  DB.logs=[];
+  if(APP_MODE==='firebase'&&FBDB){
+    FBDB.ref('ventes').remove();
+    FBDB.ref('logs').remove();
+    // historique est conservé — ne pas supprimer
+  }
+
+  closeModal('modal-cloture');
+  renderImpBadge();
+  renderHist();
+  renderClotureBadge();
+  goTo('clotures');
+  toast(`Journée clôturée — ${cloture.id} archivée ✓`,'ok');
+}
+
+/* ==================== CLÔTURES PASSÉES ==================== */
+function renderClotureBadge(){
+  const el=document.getElementById('badge-clotures');
+  if(el) el.textContent=DB.clotures.length;
+}
+
+function renderClotures(){
+  document.getElementById('clotures-print-hd').innerHTML=makePrintHd('Historique des clôtures',`${DB.clotures.length} journée(s) archivée(s)`);
+
+  if(!DB.clotures.length){
+    document.getElementById('clotures-summary').innerHTML='';
+    document.getElementById('clotures-list').innerHTML=`
+      <div style="text-align:center;padding:3rem;color:var(--ink3);">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="width:40px;height:40px;opacity:0.25;display:block;margin:0 auto 0.75rem"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+        Aucune clôture enregistrée pour l'instant.
+      </div>`;
+    return;
+  }
+
+  // Global summary over all clotures
+  const totalR = DB.clotures.reduce((s,c)=>s+c.recettes,0);
+  const totalV = DB.clotures.reduce((s,c)=>s+c.nbVentes,0);
+  const totalA = DB.clotures.reduce((s,c)=>s+c.nbArticles,0);
+  document.getElementById('clotures-summary').innerHTML=`
+    <div class="stat"><div class="stat-accent" style="background:var(--b500)"></div>
+      <div class="stat-lbl">Journées archivées</div><div class="stat-val">${DB.clotures.length}</div><div class="stat-sub">clôtures</div></div>
+    <div class="stat"><div class="stat-accent" style="background:var(--emerald)"></div>
+      <div class="stat-lbl">Total recettes</div><div class="stat-val">${totalR.toLocaleString()}</div><div class="stat-sub">FCFA cumulés</div></div>
+    <div class="stat"><div class="stat-accent" style="background:var(--sapphire)"></div>
+      <div class="stat-lbl">Total ventes</div><div class="stat-val">${totalV}</div><div class="stat-sub">transactions</div></div>
+    <div class="stat"><div class="stat-accent" style="background:var(--ruby)"></div>
+      <div class="stat-lbl">Total articles</div><div class="stat-val">${totalA}</div><div class="stat-sub">vendus</div></div>`;
+
+  // Clotures list
+  document.getElementById('clotures-list').innerHTML = [...DB.clotures].reverse().map(clo=>`
+    <div class="card" style="margin-bottom:1.25rem;">
+      <div class="card-hd" style="cursor:pointer" onclick="toggleCloDetail('${clo.id}')">
+        <div style="display:flex;align-items:center;gap:1rem;flex:1;flex-wrap:wrap">
+          <div>
+            <span class="chip chip-b" style="margin-right:6px">${clo.id}</span>
+            <strong style="font-size:0.92rem">${clo.date}</strong>
+          </div>
+          <span style="font-size:0.78rem;color:var(--ink3)">Clôturée à ${clo.heure} par ${clo.caissiere}</span>
+        </div>
+        <div style="display:flex;align-items:center;gap:1.5rem;flex-shrink:0">
+          <div style="text-align:right">
+            <div style="font-size:1.1rem;font-weight:700;color:var(--emerald)">${clo.recettes.toLocaleString()} FCFA</div>
+            <div style="font-size:0.72rem;color:var(--ink3)">${clo.nbVentes} ventes · ${clo.nbArticles} articles</div>
+          </div>
+          <button class="btn btn-print btn-sm no-print" onclick="event.stopPropagation();printCloture('${clo.id}')">🖨</button>
+          <span style="color:var(--ink3);font-size:1rem" id="arrow-${clo.id}">▼</span>
+        </div>
+      </div>
+      <div id="detail-${clo.id}" style="display:none">
+        <div class="card-body" style="padding:1rem 1.3rem">
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:1.25rem;">
+            <div>
+              <div style="font-size:0.8rem;font-weight:600;color:var(--ink2);margin-bottom:0.5rem">Top produits</div>
+              ${clo.tops.length?clo.tops.map(t=>`
+                <div style="display:flex;justify-content:space-between;font-size:0.82rem;padding:3px 0;border-bottom:1px solid var(--border)">
+                  <span>${t.emoji} ${t.nom}</span><strong>${t.qty} unités</strong>
+                </div>`).join(''):'<div style="color:var(--ink3);font-size:0.82rem">Aucune vente</div>'}
+            </div>
+            <div>
+              <div style="font-size:0.8rem;font-weight:600;color:var(--ink2);margin-bottom:0.5rem">Performance serveuses</div>
+              ${clo.svPerf.length?clo.svPerf.map(s=>`
+                <div style="display:flex;justify-content:space-between;font-size:0.82rem;padding:3px 0;border-bottom:1px solid var(--border)">
+                  <span>${s.nom}</span><strong>${s.total.toLocaleString()} FCFA (${s.qty} art.)</strong>
+                </div>`).join(''):'<div style="color:var(--ink3);font-size:0.82rem">Aucune serveuse active</div>'}
+            </div>
+          </div>
+          ${clo.nbImpayes>0?`<div style="margin-top:0.75rem;background:var(--ruby-l);border-radius:8px;padding:0.6rem 0.9rem;font-size:0.82rem;color:var(--ruby)">⚠ ${clo.nbImpayes} facture(s) impayée(s) non soldée(s) au moment de la clôture — ${clo.montantImpayes.toLocaleString()} FCFA</div>`:''}
+          ${clo.nbAnnulations>0?`<div style="margin-top:0.5rem;background:var(--amber-l);border-radius:8px;padding:0.6rem 0.9rem;font-size:0.82rem;color:var(--amber)">ℹ ${clo.nbAnnulations} annulation(s) enregistrée(s)</div>`:''}
+        </div>
+      </div>
+    </div>`).join('');
+}
+
+function toggleCloDetail(id){
+  const el=document.getElementById('detail-'+id);
+  const ar=document.getElementById('arrow-'+id);
+  if(!el) return;
+  const open=el.style.display==='none';
+  el.style.display=open?'block':'none';
+  if(ar) ar.textContent=open?'▲':'▼';
+}
+
+function printCloture(id){
+  const clo=DB.clotures.find(x=>x.id===id);
+  if(!clo) return;
+  const win=window.open('','_blank');
+  win.document.write(`<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Clôture ${clo.id}</title>
+  <style>body{font-family:Arial,sans-serif;font-size:11pt;margin:2cm}
+  h1{color:#1E3A8A;font-size:16pt}h2{color:#1D4ED8;font-size:12pt;border-bottom:1px solid #BFDBFE;padding-bottom:4px}
+  table{width:100%;border-collapse:collapse;margin-bottom:12px}th{background:#DBEAFE;text-align:left;padding:5px 8px;font-size:10pt}
+  td{padding:4px 8px;border-bottom:1px solid #E2E8F0;font-size:10pt}
+  .header{display:flex;justify-content:space-between;border-bottom:2px solid #1D4ED8;padding-bottom:8px;margin-bottom:16px}
+  .stat-box{display:inline-block;background:#F1F5F9;border-radius:6px;padding:8px 14px;margin:4px;text-align:center}
+  .stat-v{font-size:18pt;font-weight:bold;color:#1E3A8A}
+  .stat-l{font-size:8pt;color:#64748B;text-transform:uppercase}
+  @media print{@page{margin:1.5cm;size:A4}}</style></head><body>
+  <div class="header">
+    <div><h1>${nomMaquis()}</h1><div style="color:#64748B;font-size:10pt">${document.getElementById('p-ville')?.value||''}</div></div>
+    <div style="text-align:right"><div style="font-size:13pt;font-weight:bold;color:#1E3A8A">Rapport de clôture</div>
+    <div style="color:#64748B">${clo.id} — ${clo.date}</div>
+    <div style="color:#64748B;font-size:9pt">Clôturée à ${clo.heure} par ${clo.caissiere}</div></div>
+  </div>
+  <div>
+    <div class="stat-box"><div class="stat-v">${clo.recettes.toLocaleString()}</div><div class="stat-l">FCFA recettes</div></div>
+    <div class="stat-box"><div class="stat-v">${clo.nbVentes}</div><div class="stat-l">Ventes</div></div>
+    <div class="stat-box"><div class="stat-v">${clo.nbArticles}</div><div class="stat-l">Articles vendus</div></div>
+    <div class="stat-box"><div class="stat-v">${clo.nbImpayes}</div><div class="stat-l">Impayés</div></div>
+  </div>
+  <br>
+  <h2>Top produits</h2>
+  <table><tr><th>Produit</th><th>Quantité</th><th>Montant</th></tr>
+  ${clo.tops.map(t=>`<tr><td>${t.emoji} ${t.nom}</td><td>${t.qty}</td><td>${t.mt.toLocaleString()} FCFA</td></tr>`).join('')}
+  </table>
+  <h2>Performance par serveuse</h2>
+  <table><tr><th>Serveuse</th><th>Ventes</th><th>Articles</th><th>Total</th></tr>
+  ${clo.svPerf.map(s=>`<tr><td>${s.nom}</td><td>${s.ventes}</td><td>${s.qty}</td><td>${s.total.toLocaleString()} FCFA</td></tr>`).join('')}
+  </table>
+  <h2>Toutes les transactions</h2>
+  <table><tr><th>N°</th><th>Heure</th><th>Serveuse</th><th>Articles</th><th>Montant</th><th>Statut</th></tr>
+  ${clo.ventesDetail.map(v=>`<tr><td>${v.id}</td><td>${v.heure}</td><td>${v.serveuse||'—'}</td><td style="font-size:9pt">${v.items.map(i=>i.qty+'x '+i.nom).join(', ')}</td><td>${v.total.toLocaleString()}</td><td>${v.statut}</td></tr>`).join('')}
+  </table>
+  <script>window.onload=()=>{window.print();window.close();}<\/script>
+  </body></html>`);
+  win.document.close();
+}
+
+/* ==================== CLOCK ==================== */
+setInterval(()=>{
+  const el=document.getElementById('tb-time');
+  if(el)el.textContent=new Date().toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit',second:'2-digit'});
+},1000);
+
+/* ==================== INIT ==================== */
+// Setup: populateSel() called via startDemo() or startFirebase();
+</script>
+</body>
+</html>
