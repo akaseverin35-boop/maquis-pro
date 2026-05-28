@@ -1763,11 +1763,12 @@ function initFirebaseSync() {
       const loadPromises = collections.map(col =>
         FBDB.ref(col).once('value').then(s => {
           const val = s.val();
-          if(val === null) return; // Collection vide — ne pas écraser
+          if(val === null || val === undefined) return;
           if(col === 'categories') {
-            DB.categories = Array.isArray(val) ? val : Object.values(val);
+            const arr = Array.isArray(val) ? val : Object.values(val);
+            DB.categories = arr.filter(x => x !== null && x !== undefined);
           } else {
-            DB[col] = Object.values(val);
+            DB[col] = Object.values(val).filter(x => x !== null && x !== undefined);
           }
         })
       );
@@ -1791,15 +1792,16 @@ function startListening() {
   collections.forEach(col => {
     FBDB.ref(col).on('value', snap => {
       const val = snap.val();
-      if(!val) return; // Ne pas écraser avec tableau vide
+      if(!val) return;
       if(col === 'categories') {
-        DB.categories = Array.isArray(val) ? val : Object.values(val);
+        // Categories peut être un tableau ou un objet
+        const arr = Array.isArray(val) ? val : Object.values(val);
+        DB.categories = arr.filter(x => x !== null && x !== undefined);
       } else {
-        DB[col] = Object.values(val);
+        // Filtrer les entrées null que Firebase peut retourner
+        DB[col] = Object.values(val).filter(x => x !== null && x !== undefined);
       }
-      // Rafraîchir sélecteurs caissières si nécessaire
       if(col === 'caissières') populateSel();
-      // Refresh page actuelle
       refreshCurrentPage();
     });
   });
@@ -1909,7 +1911,7 @@ window.addEventListener('DOMContentLoaded', () => {
           .then(r => r.json())
           .then(val => {
             if(val) {
-              DB.caissières = Object.values(val);
+              DB.caissières = Object.values(val).filter(x => x !== null && x !== undefined);
             }
             populateSel();
             // Démarrer la sync complète en arrière-plan
@@ -2131,15 +2133,17 @@ let pinBuf='';
 function populateSel(){
   const s=document.getElementById('login-select');
   if(!s) return;
-  const currentVal = s.value; // garder la sélection actuelle
+  const currentVal = s.value;
   s.innerHTML='<option value="">— Sélectionnez votre nom —</option>';
-  DB.caissières.forEach(c=>{
+  // Filtrer les valeurs null/undefined qui peuvent venir de Firebase
+  const liste = (DB.caissières||[]).filter(c=>c && c.id && c.nom);
+  liste.forEach(c=>{
     const o=document.createElement('option');
     o.value=c.id;
     o.textContent=c.nom+(c.role==='Admin'?' ★ Admin':'');
     s.appendChild(o);
   });
-  if(currentVal) s.value=currentVal; // restaurer
+  if(currentVal) s.value=currentVal;
 }
 function pk(k){
   document.getElementById('pin-err').textContent='';
@@ -2156,7 +2160,7 @@ function doLogin(){
   if(APP_MODE==='firebase' && FBDB){
     FBDB.ref('caissières').once('value').then(snap=>{
       const val=snap.val();
-      if(val) DB.caissières=Object.values(val);
+      if(val) DB.caissières=Object.values(val).filter(x=>x!==null&&x!==undefined);
       populateSel();
       _doLoginCheck(v);
     }).catch(()=>_doLoginCheck(v));
