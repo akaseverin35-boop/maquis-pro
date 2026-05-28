@@ -1869,18 +1869,63 @@ function initConnectivityIndicator() {
   setInterval(checkOnline, 5000);
 }
 
-// ---- Auto-load saved Firebase config ----
+// ---- Auto-load saved Firebase config + connexion automatique ----
 window.addEventListener('DOMContentLoaded', () => {
   const saved = localStorage.getItem('maquis_fb_config');
   if(saved) {
     try {
       const cfg = JSON.parse(saved);
-      document.getElementById('fb-apiKey').value    = cfg.apiKey || '';
-      document.getElementById('fb-authDomain').value = cfg.authDomain || '';
+      // Remplir les champs (pour affichage si besoin)
+      document.getElementById('fb-apiKey').value     = cfg.apiKey || '';
+      document.getElementById('fb-authDomain').value  = cfg.authDomain || '';
       document.getElementById('fb-databaseURL').value = cfg.databaseURL || '';
-      document.getElementById('fb-projectId').value  = cfg.projectId || '';
-      document.getElementById('fb-remember').checked = true;
-    } catch(e) {}
+      document.getElementById('fb-projectId').value   = cfg.projectId || '';
+      document.getElementById('fb-remember').checked  = true;
+
+      // ── CONNEXION AUTOMATIQUE ──
+      // Config mémorisée trouvée → se connecter directement sans afficher l'écran setup
+      if(cfg.apiKey && cfg.databaseURL && cfg.projectId) {
+        // Cacher l'écran setup immédiatement
+        document.getElementById('firebase-setup-screen').style.display = 'none';
+        document.getElementById('login-screen').style.display = 'flex';
+
+        // Initialiser Firebase REST
+        APP_MODE = 'firebase';
+        firebase._config = null;
+        firebase.apps = [];
+        firebase._db = null;
+        firebase.initializeApp(cfg);
+        FBDB = firebase.database();
+
+        // Afficher un indicateur de chargement dans la liste
+        const sel = document.getElementById('login-select');
+        if(sel) {
+          sel.innerHTML = '<option>⏳ Chargement depuis Firebase…</option>';
+        }
+
+        // Charger les caissières depuis Firebase
+        const testUrl = cfg.databaseURL.replace(/\/$/, '') + '/caissières.json';
+        fetch(testUrl)
+          .then(r => r.json())
+          .then(val => {
+            if(val) {
+              DB.caissières = Object.values(val);
+            }
+            populateSel();
+            // Démarrer la sync complète en arrière-plan
+            initFirebaseSync();
+            initConnectivityIndicator();
+          })
+          .catch(() => {
+            // Erreur réseau — afficher quand même les caissières locales
+            populateSel();
+            initFirebaseSync();
+          });
+      }
+    } catch(e) {
+      // Config corrompue — afficher l'écran setup normalement
+      document.getElementById('firebase-setup-screen').style.display = 'flex';
+    }
   }
 });
 
