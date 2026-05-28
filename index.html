@@ -579,9 +579,97 @@ td strong{color:var(--ink);font-weight:600;}
 ::-webkit-scrollbar-thumb{background:var(--n200);border-radius:3px;}
 </style>
 
-  <!-- Firebase App (modular) -->
-  <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-database-compat.js"></script>
+  <!-- Firebase REST API — pas de script externe requis -->
+  <script>
+  // Émulation de l'API Firebase compat via REST
+  // Fonctionne avec n'importe quel fichier HTML local ou hébergé
+  const firebase = {
+    apps: [],
+    _config: null,
+    _db: null,
+    _listeners: {},
+    initializeApp(cfg) {
+      this._config = cfg;
+      this.apps = [cfg];
+      return this;
+    },
+    database() {
+      if(!this._db) this._db = new FirebaseRESTDB(this._config);
+      return this._db;
+    }
+  };
+
+  class FirebaseRESTDB {
+    constructor(cfg) {
+      this.base = cfg.databaseURL.replace(/\/$/, '');
+      this.apiKey = cfg.apiKey;
+      this._listeners = {};
+      this._polls = {};
+    }
+    ref(path) {
+      return new FirebaseRESTRef(this, path);
+    }
+  }
+
+  class FirebaseRESTRef {
+    constructor(db, path) {
+      this.db = db;
+      this.path = path.replace(/^\//, '');
+    }
+    _url(extra) {
+      const p = extra ? this.path + '/' + extra : this.path;
+      return `${this.db.base}/${p}.json?auth=${this.db.apiKey}`;
+    }
+    once(event) {
+      return fetch(this._url())
+        .then(r => r.json())
+        .then(val => ({ val: () => val }))
+        .catch(() => ({ val: () => null }));
+    }
+    set(data) {
+      return fetch(this._url(), {
+        method: 'PUT',
+        headers: {'Content-Type':'application/json'},
+        body: JSON.stringify(data)
+      }).then(r => r.json()).catch(()=>{});
+    }
+    push(data) {
+      return fetch(this._url(), {
+        method: 'POST',
+        headers: {'Content-Type':'application/json'},
+        body: JSON.stringify(data)
+      }).then(r => r.json()).catch(()=>{});
+    }
+    remove() {
+      return fetch(this._url(), { method: 'DELETE' }).catch(()=>{});
+    }
+    on(event, cb) {
+      // Polling toutes les 3 secondes pour simuler le temps réel
+      let lastVal = undefined;
+      const poll = async () => {
+        try {
+          const r = await fetch(this._url());
+          const val = await r.json();
+          const str = JSON.stringify(val);
+          if(str !== lastVal) {
+            lastVal = str;
+            cb({ val: () => val });
+          }
+        } catch(e) {}
+      };
+      poll(); // Premier appel immédiat
+      const id = setInterval(poll, 3000);
+      if(!this.db._polls) this.db._polls = {};
+      this.db._polls[this.path] = id;
+      return id;
+    }
+    off() {
+      if(this.db._polls && this.db._polls[this.path]) {
+        clearInterval(this.db._polls[this.path]);
+      }
+    }
+  }
+  </script>
 </head>
 <body>
 
@@ -1583,35 +1671,44 @@ function startFirebase() {
   try {
     const firebaseConfig = { apiKey, authDomain, databaseURL, projectId };
 
-    // Init Firebase (avoid duplicate)
-    if (!firebase.apps.length) {
-      firebase.initializeApp(firebaseConfig);
-    }
+    // Initialiser Firebase REST (pas de script externe)
+    firebase._config = null;
+    firebase.apps = [];
+    firebase._db = null;
+    firebase.initializeApp(firebaseConfig);
     FBDB = firebase.database();
 
-    // Save config if requested
+    // Sauvegarder config si demandé
     if (document.getElementById('fb-remember').checked) {
       localStorage.setItem('maquis_fb_config', JSON.stringify(firebaseConfig));
     }
 
-    // Test connection by reading root
-    FBDB.ref('/').once('value').then(() => {
-      fbStatus.innerHTML = '<span style="color:#6EE7B7">✅ Firebase connecté avec succès !</span>';
-      fbStatus.innerHTML = '<span style="color:#6EE7B7">✅ Firebase connecté ! Chargement…</span>';
-      // Cacher l'écran setup
-      document.getElementById('firebase-setup-screen').style.display = 'none';
-      document.getElementById('login-screen').style.display = 'flex';
-      // Initialiser Firebase sync (charge ou crée les données)
-      initFirebaseSync();
-      // Charger immédiatement les caissières pour l'écran de login
-      FBDB.ref('caissières').once('value').then(snap => {
-        const val = snap.val();
-        if(val) DB.caissières = Object.values(val);
-        populateSel();
-      }).catch(() => populateSel());
-    }).catch(err => {
-      fbStatus.innerHTML = '<span style="color:#F87171">❌ Erreur : ' + err.message + '</span>';
-    });
+    fbStatus.innerHTML = '<span style="color:#93C5FD">⏳ Test de connexion à Firebase…</span>';
+
+    // Tester la connexion avec un fetch direct
+    const testUrl = databaseURL.replace(/\/$/, '') + '/.json';
+    fetch(testUrl)
+      .then(r => {
+        if(r.status === 401 || r.status === 403) {
+          throw new Error('Accès refusé — allez dans Firebase Console → Realtime Database → Règles → changez les deux "false" en "true" puis publiez');
+        }
+        if(!r.ok) throw new Error('Erreur HTTP ' + r.status);
+        return r.json();
+      })
+      .then(() => {
+        fbStatus.innerHTML = '<span style="color:#6EE7B7">✅ Connecté ! Chargement des données…</span>';
+        document.getElementById('firebase-setup-screen').style.display = 'none';
+        document.getElementById('login-screen').style.display = 'flex';
+        initFirebaseSync();
+        FBDB.ref('caissières').once('value').then(snap => {
+          const val = snap.val();
+          if(val) DB.caissières = Object.values(val);
+          populateSel();
+        }).catch(() => populateSel());
+      })
+      .catch(err => {
+        fbStatus.innerHTML = '<span style="color:#F87171">❌ ' + err.message + '</span>';
+      });
   } catch(err) {
     fbStatus.innerHTML = '<span style="color:#F87171">❌ ' + err.message + '</span>';
   }
@@ -1621,50 +1718,69 @@ function startFirebase() {
 function initFirebaseSync() {
   if(!FBDB) return;
 
-  // Vérifier si Firebase est vide — si oui, pousser les données initiales
+  // PRIORITÉ ABSOLUE : Firebase est la source de vérité.
+  // Le code local ne doit JAMAIS écraser les données Firebase existantes.
+  // On charge d'abord Firebase, et seulement si Firebase est
+  // complètement vide (première installation), on initialise.
+
   FBDB.ref('/').once('value').then(snap => {
     const existing = snap.val();
+    const fbStatus = document.getElementById('fb-status');
 
-    // Si pas de caissières dans Firebase → initialiser avec les données par défaut
     if(!existing || !existing['caissières']) {
-      const fbStatus = document.getElementById('fb-status');
-      if(fbStatus) fbStatus.innerHTML = '<span style="color:#93C5FD">⏳ Initialisation de la base de données…</span>';
+      // ── PREMIÈRE INSTALLATION UNIQUEMENT ──
+      // Firebase est vide → pousser les données initiales de démo
+      if(fbStatus) fbStatus.innerHTML = '<span style="color:#93C5FD">⏳ Première installation — initialisation…</span>';
 
       const initPromises = [];
-
-      // Pousser caissières
       const caissiersObj = {};
       DB.caissières.forEach(c => { caissiersObj[c.id] = c; });
       initPromises.push(FBDB.ref('caissières').set(caissiersObj));
 
-      // Pousser stock
       const stockObj = {};
       DB.stock.forEach(s => { stockObj[s.id] = s; });
       initPromises.push(FBDB.ref('stock').set(stockObj));
 
-      // Pousser serveuses
       const svObj = {};
       DB.serveuses.forEach(s => { svObj[s.id] = s; });
       initPromises.push(FBDB.ref('serveuses').set(svObj));
 
-      // Pousser catégories
       initPromises.push(FBDB.ref('categories').set(DB.categories));
 
       Promise.all(initPromises).then(() => {
-        if(fbStatus) fbStatus.innerHTML = '<span style="color:#6EE7B7">✅ Base initialisée !</span>';
-        // Maintenant écouter en temps réel
+        if(fbStatus) fbStatus.innerHTML = '<span style="color:#6EE7B7">✅ Installation terminée !</span>';
         startListening();
-      }).catch(err => {
-        if(fbStatus) fbStatus.innerHTML = '<span style="color:#F87171">❌ Erreur init : ' + err.message + '</span>';
-        // Quand même démarrer l'écoute
-        startListening();
-      });
+      }).catch(() => startListening());
+
     } else {
-      // Données déjà dans Firebase — écouter directement
-      startListening();
+      // ── MISE À JOUR OU RECONNEXION ──
+      // Firebase a des données → les charger IMMÉDIATEMENT dans DB local
+      // Le code HTML est ignoré — Firebase prime toujours.
+      if(fbStatus) fbStatus.innerHTML = '<span style="color:#6EE7B7">✅ Données chargées depuis Firebase</span>';
+
+      // Charger toutes les collections depuis Firebase vers DB local
+      const collections = ['caissières','stock','serveuses','categories','ventes','historique','clotures','logs'];
+      const loadPromises = collections.map(col =>
+        FBDB.ref(col).once('value').then(s => {
+          const val = s.val();
+          if(val === null) return; // Collection vide — ne pas écraser
+          if(col === 'categories') {
+            DB.categories = Array.isArray(val) ? val : Object.values(val);
+          } else {
+            DB[col] = Object.values(val);
+          }
+        })
+      );
+
+      Promise.all(loadPromises).then(() => {
+        // Toutes les données Firebase sont dans DB — démarrer l'écoute temps réel
+        startListening();
+        // Mettre à jour la liste des caissières
+        populateSel();
+      }).catch(() => startListening());
     }
   }).catch(() => {
-    // En cas d'erreur, écouter quand même
+    // Erreur réseau — démarrer quand même l'écoute
     startListening();
   });
 }
@@ -1735,14 +1851,22 @@ function fbSetArray(collection, arr) {
 // ---- Connectivity indicator ----
 function initConnectivityIndicator() {
   if(APP_MODE !== 'firebase' || !FBDB) return;
-  FBDB.ref('.info/connected').on('value', snap => {
-    const online = snap.val();
-    const ind = document.getElementById('conn-indicator');
-    if(ind) {
-      ind.textContent = online ? '🟢 En ligne' : '🔴 Hors ligne';
-      ind.style.color = online ? '#6EE7B7' : '#F87171';
+  const ind = document.getElementById('conn-indicator');
+  // Tester la connectivité via un fetch simple
+  const checkOnline = () => {
+    if(!ind) return;
+    if(navigator.onLine) {
+      ind.textContent = '🟢 En ligne';
+      ind.style.color = '#6EE7B7';
+    } else {
+      ind.textContent = '🔴 Hors ligne';
+      ind.style.color = '#F87171';
     }
-  });
+  };
+  checkOnline();
+  window.addEventListener('online', checkOnline);
+  window.addEventListener('offline', checkOnline);
+  setInterval(checkOnline, 5000);
 }
 
 // ---- Auto-load saved Firebase config ----
