@@ -603,9 +603,125 @@ td strong{color:var(--ink);font-weight:600;}
 ::-webkit-scrollbar-thumb{background:var(--n200);border-radius:3px;}
 </style>
 
-  <!-- Firebase SDK via jsDelivr (CDN fiable, remplace REST) -->
-  <script src="https://cdn.jsdelivr.net/npm/firebase@9.23.0/firebase-app-compat.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/firebase@9.23.0/firebase-database-compat.min.js"></script>
+  <script>
+  /* ===== FIREBASE REST SDK — Pas de dépendance externe ===== */
+  const firebase = { apps: [], _cfg: null };
+
+  firebase.initializeApp = function(cfg) {
+    firebase._cfg = cfg;
+    firebase.apps = [cfg];
+    return firebase;
+  };
+
+  firebase.app = function() { return firebase; };
+
+  firebase.database = function() {
+    if(!firebase._db) firebase._db = new FDB(firebase._cfg);
+    return firebase._db;
+  };
+
+  class FDB {
+    constructor(cfg) {
+      this.base = cfg.databaseURL.replace(/\/+$/, '');
+      this.key  = cfg.apiKey;
+      this._listeners = {}; // col -> {timer, lastHash}
+    }
+
+    ref(path) { return new FRef(this, path.replace(/^\//, '')); }
+  }
+
+  class FRef {
+    constructor(db, path) { this.db = db; this.path = path; }
+
+    _url(extra) {
+      const p = extra ? this.path+'/'+extra : this.path;
+      return this.db.base + '/' + p + '.json';
+    }
+
+    /* Lecture unique */
+    once(evt) {
+      return fetch(this._url())
+        .then(r => { if(!r.ok) throw new Error('HTTP '+r.status); return r.json(); })
+        .then(val => ({ val: () => val }));
+    }
+
+    /* Écriture complète */
+    set(data) {
+      return fetch(this._url(), {
+        method: 'PUT',
+        headers: {'Content-Type':'application/json'},
+        body: JSON.stringify(data)
+      }).then(r => r.json());
+    }
+
+    /* Écriture partielle (merge) */
+    update(data) {
+      return fetch(this._url(), {
+        method: 'PATCH',
+        headers: {'Content-Type':'application/json'},
+        body: JSON.stringify(data)
+      }).then(r => r.json());
+    }
+
+    /* Ajout avec clé auto */
+    push(data) {
+      return fetch(this._url(), {
+        method: 'POST',
+        headers: {'Content-Type':'application/json'},
+        body: JSON.stringify(data)
+      }).then(r => r.json());
+    }
+
+    /* Suppression */
+    remove() {
+      return fetch(this._url(), { method: 'DELETE' }).then(r => r.json());
+    }
+
+    /* Listener temps réel simulé (polling 4s) */
+    on(evt, cb) {
+      const col = this.path;
+      if(this.db._listeners[col]) clearInterval(this.db._listeners[col].timer);
+      let lastHash = null;
+
+      const poll = () => {
+        fetch(this._url())
+          .then(r => r.ok ? r.json() : null)
+          .then(val => {
+            const h = JSON.stringify(val);
+            if(h !== lastHash) { lastHash = h; cb({ val: () => val }); }
+          })
+          .catch(() => {});
+      };
+
+      poll(); // appel immédiat
+      const timer = setInterval(poll, 4000);
+      this.db._listeners[col] = { timer, lastHash: null };
+      return timer;
+    }
+
+    off() {
+      const L = this.db._listeners[this.path];
+      if(L) { clearInterval(L.timer); delete this.db._listeners[this.path]; }
+    }
+
+    /* Recherche par enfant (pour orderByChild / equalTo) */
+    orderByChild(child) { return new FQuery(this.db, this.path, child); }
+  }
+
+  class FQuery {
+    constructor(db, path, child) {
+      this.db = db; this.path = path; this.child = child; this._val = null;
+    }
+    equalTo(v) { this._val = v; return this; }
+    once(evt) {
+      const url = this.db.base+'/'+this.path+'.json'
+        +'?orderBy="'+this.child+'"&equalTo="'+this._val+'"';
+      return fetch(url)
+        .then(r => r.ok ? r.json() : null)
+        .then(val => ({ val: () => val }));
+    }
+  }
+  </script>
 <body>
 
 <!-- ==================== LOGIN ==================== -->
@@ -1706,9 +1822,8 @@ function startFirebase() {
   try {
     const firebaseConfig = { apiKey, authDomain, databaseURL, projectId };
 
-    // Initialiser avec le vrai SDK Firebase (jsDelivr)
+    // Initialiser Firebase
     if(!firebase.apps.length) firebase.initializeApp(firebaseConfig);
-    else firebase.app(); // app déjà initialisée
     FBDB = firebase.database();
 
 
@@ -1823,17 +1938,16 @@ function startListening() {
   collections.forEach(col => {
     FBDB.ref(col).on('value', snap => {
       const val = snap.val();
+      console.log('[MaquisPro] Update temps réel:', col, val ? Object.keys(val).length : 0);
       if(col === 'categories') {
         if(val){
           const arr = Array.isArray(val) ? val : Object.values(val);
           DB.categories = arr.filter(x => x !== null && x !== undefined);
         }
       } else {
-        // val peut être null si la collection est vide
         DB[col] = val ? Object.values(val).filter(x => x !== null && x !== undefined) : [];
       }
       if(col === 'caissières') populateSel();
-      // Toujours rafraîchir même si la collection est vide
       renderStockBadge();
       renderImpBadge();
       renderClotureBadge();
@@ -1923,10 +2037,8 @@ window.addEventListener('DOMContentLoaded', () => {
 
         // Initialiser avec vrai SDK
         APP_MODE = 'firebase';
-        try {
-          if(!firebase.apps.length) firebase.initializeApp(cfg);
-          FBDB = firebase.database();
-        } catch(e) { console.log('Firebase init:', e); }
+        if(!firebase.apps.length) firebase.initializeApp(cfg);
+        FBDB = firebase.database();
 
         // Afficher un indicateur de chargement dans la liste
         const sel = document.getElementById('login-select');
@@ -2283,17 +2395,19 @@ function _doLoginCheck(v){
     Promise.all(cols.map(col =>
       FBDB.ref(col).once('value').then(snap => {
         const val = snap.val();
+        console.log('[MaquisPro] Lu:', col, val ? Object.keys(val).length+'  entrées' : 'vide');
         if(col === 'categories') {
           if(val) DB.categories = Array.isArray(val) ? val : Object.values(val).filter(x=>x);
         } else {
           DB[col] = val ? Object.values(val).filter(x=>x!==null&&x!==undefined) : [];
         }
-      }).catch(()=>{})
+      }).catch(err=>{
+        console.error('[MaquisPro] Erreur:', col, err.message);
+      })
     )).then(() => {
-      // Supprimer l'indicateur de chargement
+      console.log('[MaquisPro] Chargement terminé — ventes:',DB.ventes.length,'historique:',DB.historique.length);
       const el = document.getElementById('login-loading');
       if(el) el.remove();
-      // Afficher la page avec toutes les données
       goTo('vente');
       renderStockBadge();
       renderImpBadge();
@@ -2301,12 +2415,13 @@ function _doLoginCheck(v){
       refreshSvLists();
       renderMenuGrid('tous');
       renderMenuCats();
-      toast(`Bienvenue, ${c.nom} !`, 'ok');
-    }).catch(() => {
+      toast('Bienvenue, '+c.nom+' !', 'ok');
+    }).catch(err => {
+      console.error('[MaquisPro] Erreur globale:', err);
       const el = document.getElementById('login-loading');
       if(el) el.remove();
       goTo('vente');
-      toast(`Bienvenue, ${c.nom} !`, 'ok');
+      toast('Bienvenue, '+c.nom+' !', 'ok');
     });
   } else {
     goTo('vente');
