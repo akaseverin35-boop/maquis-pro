@@ -624,10 +624,46 @@ td strong{color:var(--ink);font-weight:600;}
     constructor(cfg) {
       this.base = cfg.databaseURL.replace(/\/+$/, '');
       this.key  = cfg.apiKey;
-      this._listeners = {}; // col -> {timer, lastHash}
+      this._polls = {};
     }
 
     ref(path) { return new FRef(this, path.replace(/^\//, '')); }
+
+    // Lire une collection entière
+    read(col) {
+      return fetch(`${this.base}/${col}.json?auth=${this.key}`)
+        .then(r => r.ok ? r.json() : null);
+    }
+
+    // Écrire un item par clé
+    write(col, key, data) {
+      const safeKey = String(key).replace(/[.#$\[\]/]/g,'_');
+      return fetch(`${this.base}/${col}/${safeKey}.json?auth=${this.key}`, {
+        method:'PUT', headers:{'Content-Type':'application/json'},
+        body: JSON.stringify(data)
+      }).then(r=>r.json());
+    }
+
+    // Patcher des champs d'un item
+    patch(col, key, fields) {
+      const safeKey = String(key).replace(/[.#$\[\]/]/g,'_');
+      return fetch(`${this.base}/${col}/${safeKey}.json?auth=${this.key}`, {
+        method:'PATCH', headers:{'Content-Type':'application/json'},
+        body: JSON.stringify(fields)
+      }).then(r=>r.json());
+    }
+
+    // Supprimer un item
+    del(col, key) {
+      const safeKey = String(key).replace(/[.#$\[\]/]/g,'_');
+      return fetch(`${this.base}/${col}/${safeKey}.json?auth=${this.key}`, {method:'DELETE'});
+    }
+
+    // Stopper tous les polls
+    stopAll() {
+      Object.values(this._polls).forEach(p=>clearInterval(p.timer));
+      this._polls = {};
+    }
   }
 
   class FRef {
@@ -680,7 +716,7 @@ td strong{color:var(--ink);font-weight:600;}
     /* Listener temps réel simulé (polling 4s) */
     on(evt, cb) {
       const col = this.path;
-      if(this.db._listeners[col]) clearInterval(this.db._listeners[col].timer);
+      if(this.db._polls[col]) clearInterval(this.db._polls[col].timer);
       let lastHash = null;
 
       const poll = () => {
@@ -693,15 +729,15 @@ td strong{color:var(--ink);font-weight:600;}
           .catch(() => {});
       };
 
-      poll(); // appel immédiat
-      const timer = setInterval(poll, 2000);
-      this.db._listeners[col] = { timer, lastHash: null };
+      poll();
+      const timer = setInterval(poll, 3000);
+      this.db._polls[col] = { timer };
       return timer;
     }
 
     off() {
-      const L = this.db._listeners[this.path];
-      if(L) { clearInterval(L.timer); delete this.db._listeners[this.path]; }
+      const p = this.db._polls[this.path];
+      if(p) { clearInterval(p.timer); delete this.db._polls[this.path]; }
     }
 
     /* Recherche par enfant (pour orderByChild / equalTo) */
@@ -2233,77 +2269,45 @@ function calcSoldeMonnaie(){
 
 function confirmerSolde(){
   if(!soldeCurrent) return;
-  const mode    = document.getElementById('solde-mode').value;
-  const ventId  = soldeCurrent.id;
-  const btn     = document.getElementById('btn-solder');
+  const mode   = document.getElementById('solde-mode').value;
+  const ventId = soldeCurrent.id;
+  const btn    = document.getElementById('btn-solder');
   if(btn){ btn.disabled=true; btn.textContent='⏳ En cours…'; }
 
-  // Mettre à jour l'objet
-  soldeCurrent.statut     = 'Payé';
-  soldeCurrent.modeSolde  = mode;
-  soldeCurrent.heureSolde = tNow();
-  soldeCurrent.soldePar   = DB.user?.nom||'';
-  const recuData = {...soldeCurrent};
-
-  // Mettre à jour localement
-  const vIdx = DB.ventes.findIndex(x=>x.id===ventId);
-  if(vIdx>=0) DB.ventes[vIdx] = {...soldeCurrent};
-  const hiIdx = DB.historique.findIndex(x=>x.id===ventId);
-  if(hiIdx>=0) DB.historique[hiIdx] = {...soldeCurrent};
+  // Préparer la mise à jour
+  const updated = {...soldeCurrent, statut:'Payé', modeSolde:mode, heureSolde:tNow(), soldePar:DB.user?.nom||''};
   soldeCurrent = null;
 
-  // Afficher le reçu immédiatement
-  showRecu(recuData);
+  // Mettre à jour localement
+  const vIdx  = DB.ventes.findIndex(x=>x.id===ventId);
+  if(vIdx>=0)  DB.ventes[vIdx]     = {...updated};
+  const hiIdx = DB.historique.findIndex(x=>x.id===ventId);
+  if(hiIdx>=0) DB.historique[hiIdx] = {...updated};
+
+  // Afficher résultat immédiatement
+  showRecu(updated);
   closeModal('modal-solde');
   renderImpayes(); renderHist(); renderRapport(); renderImpBadge();
-  toast('Facture '+ventId+' soldée ✓', 'ok');
+  toast('Facture '+ventId+' soldée ✓','ok');
   if(btn){btn.disabled=false;btn.textContent='Solder ✓';}
 
   if(APP_MODE==='firebase' && FBDB){
-    const cfg = firebase._cfg;
-    const base = cfg.databaseURL.replace(/\/+$/,'');
-    const auth = cfg.apiKey;
+    const safeId = ventId.replace(/[.#$\[\]/]/g,'_');
+    const fields  = {statut:'Payé', modeSolde:mode, heureSolde:updated.heureSolde, soldePar:updated.soldePar};
 
-    // Stopper tous les listeners pour éviter écrasement
-    Object.values(FBDB._listeners||{}).forEach(l=>clearInterval(l.timer));
-    FBDB._listeners = {};
+    // Stopper le polling
+    FBDB.stopAll();
 
-    // Lire, modifier et réécrire chaque collection
-    const updateCollection = (col) => {
-      return fetch(base+'/'+col+'.json?auth='+auth)
-        .then(r => r.json())
-        .then(data => {
-          if(!data) return;
-          // Trouver et modifier la vente par son ID
-          let modified = false;
-          Object.keys(data).forEach(k => {
-            if(data[k] && data[k].id === ventId) {
-              data[k].statut     = 'Payé';
-              data[k].modeSolde  = mode;
-              data[k].heureSolde = recuData.heureSolde;
-              data[k].soldePar   = recuData.soldePar;
-              modified = true;
-            }
-          });
-          if(!modified) return;
-          // Réécrire toute la collection avec la modification
-          return fetch(base+'/'+col+'.json?auth='+auth, {
-            method: 'PUT',
-            headers: {'Content-Type':'application/json'},
-            body: JSON.stringify(data)
-          });
-        });
-    };
-
+    // Patcher directement par l'ID de la vente
     Promise.all([
-      updateCollection('ventes'),
-      updateCollection('historique')
-    ]).then(() => {
-      // Redémarrer le polling après 1.5s
-      setTimeout(() => startListening(), 1500);
-    }).catch(err => {
-      console.error('Solde sync err:', err);
-      setTimeout(() => startListening(), 1500);
+      FBDB.patch('ventes',    safeId, fields),
+      FBDB.patch('historique', safeId, fields)
+    ]).then(()=>{
+      // Redémarrer après 2s
+      setTimeout(()=>startListening(), 2000);
+    }).catch(err=>{
+      console.error('Solde err:', err);
+      setTimeout(()=>startListening(), 2000);
     });
   }
 }
@@ -2429,17 +2433,14 @@ function _doLoginCheck(v){
     // Charger TOUTES les données avant d'afficher
     const cols = ['ventes','historique','clotures','logs','stock','serveuses','caissières','categories'];
     Promise.all(cols.map(col =>
-      FBDB.ref(col).once('value').then(snap => {
-        const val = snap.val();
-        console.log('[MaquisPro] Lu:', col, val ? Object.keys(val).length+'  entrées' : 'vide');
+      FBDB.read(col).then(val => {
+        console.log('[MaquisPro]', col, val ? Object.keys(val).length : 0, 'entrées');
         if(col === 'categories') {
-          if(val) DB.categories = Array.isArray(val) ? val : Object.values(val).filter(x=>x);
+          if(val) DB.categories = Array.isArray(val) ? val.filter(x=>x) : Object.values(val).filter(x=>x);
         } else {
           DB[col] = val ? Object.values(val).filter(x=>x!==null&&x!==undefined) : [];
         }
-      }).catch(err=>{
-        console.error('[MaquisPro] Erreur:', col, err.message);
-      })
+      }).catch(()=>{})
     )).then(() => {
       console.log('[MaquisPro] Chargement terminé — ventes:',DB.ventes.length,'historique:',DB.historique.length);
       const el = document.getElementById('login-loading');
@@ -2648,27 +2649,13 @@ function confirmVente(){
   newVente.cloture = null; // sera rempli à la clôture
   DB.ventes.push(newVente);
   DB.historique.push(newVente);
-  // Sync Firebase — stopper polling, écrire, redémarrer
+  // Sync Firebase — écriture par ID de vente (clé stable)
   if(APP_MODE==='firebase' && FBDB){
-    const cfg = firebase._cfg;
-    const base = cfg.databaseURL.replace(/\/+$/,'');
-    const auth = cfg.apiKey;
-    const fbKey = 'v' + Date.now();
-
-    // Stopper le polling
-    Object.values(FBDB._listeners||{}).forEach(l=>clearInterval(l.timer));
-    FBDB._listeners = {};
-
-    // Écrire la nouvelle vente dans les deux collections
+    FBDB.stopAll();
+    const safeId = newVente.id.replace(/[.#$\[\]/]/g,'_');
     Promise.all([
-      fetch(base+'/ventes/'+fbKey+'.json?auth='+auth, {
-        method:'PUT', headers:{'Content-Type':'application/json'},
-        body: JSON.stringify(newVente)
-      }),
-      fetch(base+'/historique/'+fbKey+'.json?auth='+auth, {
-        method:'PUT', headers:{'Content-Type':'application/json'},
-        body: JSON.stringify(newVente)
-      })
+      FBDB.write('ventes',     safeId, newVente),
+      FBDB.write('historique', safeId, newVente)
     ]).then(()=> setTimeout(()=>startListening(), 1000))
       .catch(()=> setTimeout(()=>startListening(), 1000));
   }
@@ -4013,7 +4000,7 @@ function confirmerCloture(){
   DB.logs = [];
 
   if(APP_MODE==='firebase'&&FBDB){
-    if(FBDB._polls){Object.values(FBDB._polls).forEach(id=>clearInterval(id));FBDB._polls={};}
+    FBDB.stopAll();
 
     // Construire objets Firebase
     const ventesObj={};
