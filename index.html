@@ -635,7 +635,7 @@ td strong{color:var(--ink);font-weight:600;}
 
     _url(extra) {
       const p = extra ? this.path+'/'+extra : this.path;
-      return this.db.base + '/' + p + '.json';
+      return this.db.base + '/' + p + '.json?auth=' + this.db.key;
     }
 
     /* Lecture unique */
@@ -715,7 +715,8 @@ td strong{color:var(--ink);font-weight:600;}
     equalTo(v) { this._val = v; return this; }
     once(evt) {
       const url = this.db.base+'/'+this.path+'.json'
-        +'?orderBy="'+this.child+'"&equalTo="'+this._val+'"';
+        +'?auth='+this.db.key
+        +'&orderBy="'+this.child+'"&equalTo="'+this._val+'"';
       return fetch(url)
         .then(r => r.ok ? r.json() : null)
         .then(val => ({ val: () => val }));
@@ -1839,8 +1840,12 @@ function startFirebase() {
 
     fbStatus.innerHTML = '<span style="color:#93C5FD">⏳ Test de connexion…</span>';
 
-    // Tester avec le vrai SDK Firebase
-    FBDB.ref('.info/connected').once('value')
+    // Tester avec fetch direct vers la base
+    fetch(databaseURL.replace(/\/+$/,'') + '/.json?auth=' + apiKey + '&shallow=true')
+      .then(r => {
+        if(!r.ok) throw new Error('HTTP ' + r.status + ' — vérifiez les règles Firebase (mode test)');
+        return r.json();
+      })
       .then(() => {
         fbStatus.innerHTML = '<span style="color:#6EE7B7">✅ Connecté !</span>';
         document.getElementById('firebase-setup-screen').style.display = 'none';
@@ -2017,11 +2022,26 @@ function initConnectivityIndicator() {
   const ind = document.getElementById('conn-indicator');
   if(!ind) return;
   ind.style.display = 'block';
-  FBDB.ref('.info/connected').on('value', snap => {
-    const on = snap.val();
-    ind.textContent = on ? '🟢 En ligne' : '🔴 Hors ligne';
-    ind.style.color  = on ? '#6EE7B7'    : '#F87171';
-  });
+
+  // Si on reçoit des données Firebase = on est en ligne
+  // On se base sur navigator.onLine + test fetch simple
+  const updateStatus = (online) => {
+    ind.textContent = online ? '🟢 En ligne' : '🔴 Hors ligne';
+    ind.style.color  = online ? '#6EE7B7'    : '#F87171';
+  };
+
+  // Vérification initiale — si le polling fonctionne = en ligne
+  // On marque "En ligne" par défaut et on surveille les erreurs réseau
+  updateStatus(true);
+
+  // Écouter les événements réseau du navigateur
+  window.addEventListener('online',  () => updateStatus(true));
+  window.addEventListener('offline', () => updateStatus(false));
+
+  // Vérification périodique légère
+  setInterval(() => {
+    updateStatus(navigator.onLine !== false);
+  }, 5000);
 }
 
 // ---- Auto-load saved Firebase config + connexion automatique ----
@@ -2055,9 +2075,21 @@ window.addEventListener('DOMContentLoaded', () => {
           sel.innerHTML = '<option>⏳ Chargement depuis Firebase…</option>';
         }
 
-        // Charger les données et démarrer la sync
-        initFirebaseSync();
-        initConnectivityIndicator();
+        // Vérifier connexion puis démarrer sync
+        fetch(cfg.databaseURL.replace(/\/+$/,'') + '/.json?auth=' + cfg.apiKey + '&shallow=true')
+          .then(r => {
+            if(r.ok) {
+              initFirebaseSync();
+              initConnectivityIndicator();
+            } else {
+              console.error('Firebase connexion refusée:', r.status);
+              initFirebaseSync(); // essayer quand même
+            }
+          })
+          .catch(() => {
+            initFirebaseSync();
+            initConnectivityIndicator();
+          });
       }
     } catch(e) {
       // Config corrompue — afficher l'écran setup normalement
