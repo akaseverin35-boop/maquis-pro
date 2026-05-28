@@ -694,7 +694,7 @@ td strong{color:var(--ink);font-weight:600;}
       };
 
       poll(); // appel immédiat
-      const timer = setInterval(poll, 4000);
+      const timer = setInterval(poll, 2000);
       this.db._listeners[col] = { timer, lastHash: null };
       return timer;
     }
@@ -877,6 +877,10 @@ td strong{color:var(--ink);font-weight:600;}
         Design
       </button>
       <div id="conn-indicator" style="font-size:0.72rem;padding:3px 8px;border-radius:6px;background:var(--n50);border:1px solid var(--n200);display:none"></div>
+      <button onclick="forceRefresh()" title="Actualiser les données" style="background:var(--n50);border:1px solid var(--n200);border-radius:8px;padding:5px 10px;cursor:pointer;font-size:0.78rem;color:var(--ink3);display:flex;align-items:center;gap:4px;" id="btn-refresh">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:13px;height:13px"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>
+        Actualiser
+      </button>
       <div id="sync-indicator" style="font-size:0.72rem;padding:3px 8px;border-radius:6px;display:none;align-items:center;gap:4px;"></div>
       <div class="tb-badge">
         <div class="tb-av" id="tb-av"></div>
@@ -1948,15 +1952,20 @@ function startListening() {
         DB[col] = val ? Object.values(val).filter(x => x !== null && x !== undefined) : [];
       }
       if(col === 'caissières') populateSel();
+      if(col === 'serveuses') refreshSvLists();
+      // Toujours mettre à jour les badges
       renderStockBadge();
       renderImpBadge();
       renderClotureBadge();
+      // Mettre à jour la page active
       refreshCurrentPage();
     });
   });
 }
 
 function refreshCurrentPage() {
+  if(!document.getElementById('app-screen') ||
+     document.getElementById('app-screen').style.display === 'none') return;
   const active = document.querySelector('.main.on');
   if(!active) return;
   const page = active.id.replace('page-','');
@@ -1971,7 +1980,7 @@ function refreshCurrentPage() {
     if(page==='admin')      { renderAdmin(); }
     if(page==='inventaire') { renderInventaire(); }
     renderStockBadge(); renderImpBadge(); renderClotureBadge();
-  } catch(e) { /* ignorer les erreurs de rendu partiel */ }
+  } catch(e) {}
 }
 
 // ---- Firebase write helpers ----
@@ -4400,6 +4409,45 @@ document.addEventListener('click', e => {
     }
   }
 });
+
+/* ==================== FORCE REFRESH ==================== */
+function forceRefresh() {
+  const btn = document.getElementById('btn-refresh');
+  if(btn) { btn.style.opacity='0.5'; btn.style.pointerEvents='none'; }
+
+  if(APP_MODE === 'firebase' && FBDB) {
+    const cols = ['ventes','historique','stock','serveuses','caissières','categories','clotures','logs'];
+    Promise.all(cols.map(col =>
+      FBDB.ref(col).once('value').then(snap => {
+        const val = snap.val();
+        if(col === 'categories') {
+          if(val) DB.categories = Array.isArray(val) ? val.filter(x=>x) : Object.values(val).filter(x=>x);
+        } else {
+          DB[col] = val ? Object.values(val).filter(x=>x&&x!==null) : [];
+        }
+      }).catch(()=>{})
+    )).then(() => {
+      // Forcer le rendu de tout
+      populateSel();
+      refreshSvLists();
+      renderMenuGrid('tous');
+      renderMenuCats();
+      renderStockBadge();
+      renderImpBadge();
+      renderClotureBadge();
+      renderHist();
+      renderImpayes();
+      renderRapport();
+      renderStock('tous');
+      renderSv();
+      if(btn) { btn.style.opacity='1'; btn.style.pointerEvents='auto'; }
+      toast('Données actualisées ✓','ok');
+    });
+  } else {
+    refreshCurrentPage();
+    if(btn) { btn.style.opacity='1'; btn.style.pointerEvents='auto'; }
+  }
+}
 
 /* ==================== CLOCK ==================== */
 setInterval(()=>{
